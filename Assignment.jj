@@ -1,20 +1,77 @@
-
+options {
+    STATIC = false;
+}
 
 PARSER_BEGIN(Assignment)
 
 public class Assignment{
 
-  public static void main(String args [])   {
-   
+  public static void main(String args []) throws ParseException, TokenMgrError {
+
     Assignment parser = new Assignment(System.in);
-   
+    parser.Start();
    }
    
 }
 
 PARSER_END(Assignment)
 
+//SKIP: {}
 
+/* Keywords of PLM */
+TOKEN: {
+    < DEF : "DEF" > |
+    < MAIN : "MAIN" > |
+    < FUNC_NAME : (["A"-"Z"])+ > |
+    < PARAMETER : (["a"-"z"])+ > |
+    < LEFT_BRACE : "{" > |
+    < RIGHT_BRACE : "}" > |
+    < LEFT_PARENTHESIS : "(" > |
+    < RIGHT_PARENTHESIS : ")" > |
+    < SEMICOLON : ";" > |
+    < EOL : "\n" | "\r" | "\r\n" > |
+    < NUMBER : (["0"-"9"])* > |
+    < PLUS : "+" > |
+    < MULTIPLY : "*" >}
+
+void Start():
+{}
+{
+    Function()
+}
+
+int Function():
+{
+    int b;
+}
+{
+    <DEF>" "<FUNC_NAME>" "<PARAMETER>" { "(b = Body())" } "(<EOL> | <EOL><EOF>)
+}
+
+int Main():
+{
+    int e;
+}
+{
+    e = Expression()
+}
+
+int Body():
+{}
+{
+    Expression()
+}
+
+int Expression():
+{
+    int e;
+    int n;
+}
+{
+    (n = <NUMBER>)<PLUS>(e = Expression()) {return (n + e)} |
+    (n = <NUMBER>)<MULTIPLY>(e = Expression()) {return (n * e)} |
+    (n = <NUMBER>) {return n}
+}
 
 
 
