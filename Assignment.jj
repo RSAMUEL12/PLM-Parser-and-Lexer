@@ -4,14 +4,19 @@ options {
 
 PARSER_BEGIN(Assignment)
 
+import java.util.ArrayList;
+
 public class Assignment{
 
-  public static void main(String args []) throws ParseException, TokenMgrError {
+    ArrayList<String> definedFuncs = new ArrayList<>();
+    ArrayList<String> calledFuncs = new ArrayList<>();
 
-    Assignment parser = new Assignment(System.in);
-    parser.Start();
-   }
-   
+    public static void main(String args []) throws ParseException, TokenMgrError {
+
+        Assignment parser = new Assignment(System.in);
+        parser.Start();
+    }
+
 }
 
 PARSER_END(Assignment)
@@ -24,54 +29,161 @@ TOKEN: {
     < MAIN : "MAIN" > |
     < FUNC_NAME : (["A"-"Z"])+ > |
     < PARAMETER : (["a"-"z"])+ > |
+    < SPACE : " " > |
     < LEFT_BRACE : "{" > |
     < RIGHT_BRACE : "}" > |
     < LEFT_PARENTHESIS : "(" > |
     < RIGHT_PARENTHESIS : ")" > |
     < SEMICOLON : ";" > |
-    < EOL : "\n" | "\r" | "\r\n" > |
+    < EOL : "\n" | "\r" | "\r\n" | "\n\r"> |
     < NUMBER : (["0"-"9"])* > |
     < PLUS : "+" > |
-    < MULTIPLY : "*" >}
+    < TIMES : "*" >}
 
 void Start():
+{
+    String name;
+    Token f;
+}
+{
+    (
+        // Main and Declaration production rules are broken down to the function names
+        // in order to avoid choice conflicts
+        <DEF>
+        <SPACE>
+        (
+            f = <MAIN>
+            Function_Main()
+        |
+            f = <FUNC_NAME>
+            <SPACE>
+            Function_Declaration()
+        )
+        {
+            name = f.image.toString();
+            if (f.kind == DEF) {
+               throw new ParseException("Function name cannot be DEF");
+            }
+
+            if (definedFuncs.contains(name)) {
+                throw new ParseException(name + " is already defined");
+            } else {
+                definedFuncs.add(name);
+            }
+
+        }
+    )*
+    <EOF>
+    {
+        if (!definedFuncs.contains("MAIN")) {
+            throw new ParseException("MAIN is not defined in the program");
+        }
+
+        for (int i = 0; i < calledFuncs.size(); i++) {
+            if (!definedFuncs.contains(calledFuncs.get(i))) {
+                throw new ParseException(calledFuncs.get(i) + " is not a defined function in the program");
+            }
+        }
+
+        System.out.print("PASS");
+    }
+}
+
+void Function_Main():
 {}
 {
-    Function()
+    " { "
+    Function_Main_Body()
+    " } ;"
+    <EOL>
 }
 
-int Function():
+// If a function is defined, the production rule will capture the name, the parameter defined,
+// and the function body.
+void Function_Declaration():
 {
-    int b;
+    Token p, q, f;
+    String name;
 }
 {
-    <DEF>" "<FUNC_NAME>" "<PARAMETER>" { "(b = Body())" } "(<EOL> | <EOL><EOF>)
+    (p = <PARAMETER>)
+    " { "
+    Function_Body(p.image.toString())
+    " } ;"
+    <EOL>
+
+
 }
 
-int Main():
-{
-    int e;
-}
-{
-    e = Expression()
-}
-
-int Body():
+// Main body will not have any parameters involved
+void Function_Main_Body():
 {}
 {
-    Expression()
+    (<NUMBER> | Function_Call(null))
+    (
+        <PLUS>
+        (<NUMBER> | Function_Call(null))
+    |
+        <TIMES>
+        (<NUMBER> | Function_Call(null))
+    )*
 }
 
-int Expression():
+// Calls will be made up of the function name, parenthesis, and a function body which can contains
+// a single value or an expression
+void Function_Call(String arg):
 {
-    int e;
-    int n;
+    Token f;
+    String name;
 }
 {
-    (n = <NUMBER>)<PLUS>(e = Expression()) {return (n + e)} |
-    (n = <NUMBER>)<MULTIPLY>(e = Expression()) {return (n * e)} |
-    (n = <NUMBER>) {return n}
+    (f = <FUNC_NAME>) {name = f.image.toString();}
+    "("
+    Function_Body(arg)
+    ")"
+
+    {calledFuncs.add(name);}
 }
+
+
+void Function_Body(String arg):
+{
+    Token t = null;
+    String i ;
+    boolean isPresent = false;
+}
+{
+    (t = <PARAMETER> | t = <NUMBER> | Function_Call(arg) )
+    {
+        // Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
+        // 2 Separate checks since there can be just a single value or an expression
+        if (t != null) {
+            i = t.image.toString();
+            if (t.kind == PARAMETER && i.equals(arg)) {
+                isPresent = true;
+            } else if (t.kind == PARAMETER && i.equals(arg) == false){
+                throw new ParseException("Parameter not allowed in function");
+            }
+        }
+    }
+    (
+        (<PLUS> | <TIMES>)
+        (t = <PARAMETER> | t = <NUMBER> | Function_Call(arg))
+        {
+            // Extra check in case the body contains an expression with + or *
+            if (t != null) {
+                i = t.image.toString();
+                if (t.kind == PARAMETER && i.equals(arg) == false){
+                    throw new ParseException("Parameter not allowed in function");
+                }
+            }
+        }
+    )*
+}
+
+
+
+
 
 
 
