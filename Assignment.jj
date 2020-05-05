@@ -49,9 +49,7 @@ public class Assignment{
     }
 
     public static void evaluateProgram(Assignment parser) {
-        System.out.println(parser.functions.get("A"));
         String mainExpression = decomposeFunction(parser, "MAIN", "");
-        System.out.println(mainExpression);
         // returns a stack of operations in a postfix order
         Queue<String> exp = infixToPostfix(mainExpression);
         int result = evaluatePostfix(exp);
@@ -137,7 +135,6 @@ public class Assignment{
         boolean callPresent = false; // tells the function there is a function call that needs to be decomposed
 
         for (String s : functionDefinition) {
-            System.out.println(s);
             if (isNumeric(s)) {
                 //System.out.println("Number");
                 newFunction += s;
@@ -182,7 +179,6 @@ public class Assignment{
 
         }
 
-        System.out.println("Exiting...");
         return newFunction;
     }
 
@@ -296,7 +292,6 @@ public class Assignment{
                     }
                 }
                 String s = exp.substring(startInt, endInt+1);
-                System.out.println(s);
                 result += s;
                 postfix.add(s);
                 i = endInt;
@@ -349,7 +344,6 @@ public class Assignment{
             result += elem;
             postfix.add(elem);
         }
-        System.out.println(postfix);
         return postfix;
     }
 
@@ -447,7 +441,6 @@ void Start():
             try {p = <PARAMETER>} catch (ParseException e) {}
             {
                 if (p != null) {
-                    System.out.println(p.image.toString());
                     printError("Parameter illegal", lineNumber);
                 }
             }
