@@ -8,15 +8,15 @@ import java.util.*;
 
 public class Assignment{
 
-    ArrayList<String> definedFuncs = new ArrayList<>();
-    HashMap<String, Integer> calledFuncs = new HashMap<>();
+    ArrayList<String> definedFuncs = new ArrayList<String>();
+    HashMap<String, Integer> calledFuncs = new HashMap<String, Integer>();
 
     // Hashmap will store the function names alongside sections of the function bodies
     // The arraylist in the map will store each token separately
-    HashMap<String, ArrayList<String>> functions = new HashMap<>();
+    HashMap<String, ArrayList<String>> functions = new HashMap<String, ArrayList<String>>();
 
     // stores all the functions called in the currentFunc
-    ArrayList<String> callsInCurrent = new ArrayList<>();
+    ArrayList<String> callsInCurrent = new ArrayList<String>();
 
     // keeps track of the function that is being parsed
     String currentFunc = "";
@@ -268,10 +268,10 @@ public class Assignment{
     {
         // initializing empty String for result
         String result = new String("");
-        Queue<String> postfix = new LinkedList<>();
+        Queue<String> postfix = new LinkedList<String>();
 
         // initializing empty stack
-        Stack<String> stack = new Stack<>();
+        Stack<String> stack = new Stack<String>();
 
         for (int i = 0; i<exp.length(); ++i)
         {
@@ -356,7 +356,7 @@ public class Assignment{
     // Method to evaluate value of a postfix expression from a queue of tokens(operands and operators)
     public static int evaluatePostfix(Queue<String> exp) {
         //create a stack
-        Stack<Integer> stack=new Stack<>();
+        Stack<Integer> stack=new Stack<Integer>();
 
         // Scan all characters one by one
         while (!exp.isEmpty())
@@ -438,8 +438,8 @@ void Start():
             {
                 p = null;
                 currentFunc = "MAIN";
-                functions.put(currentFunc, new ArrayList<>());
-                callsInCurrent = new ArrayList<>();
+                functions.put(currentFunc, new ArrayList<String>());
+                callsInCurrent = new ArrayList<String>();
             }
             try {<SPACE>} catch (ParseException e) {printError("Missing single space after MAIN keyword", lineNumber);}
 
@@ -457,8 +457,8 @@ void Start():
             try {f = <FUNC_NAME>} catch (ParseException e) {printError("Function name missing after space", lineNumber);}
             {
                 currentFunc = f.image.toString();
-                functions.put(currentFunc, new ArrayList<>());
-                callsInCurrent = new ArrayList<>();
+                functions.put(currentFunc, new ArrayList<String>());
+                callsInCurrent = new ArrayList<String>();
             }
             try {<SPACE>} catch (ParseException e) {printError("Missing single space after '" + f.image.toString() + "'", lineNumber);}
 

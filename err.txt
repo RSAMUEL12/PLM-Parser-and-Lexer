@@ -1,0 +1,2 @@
+1
+Incorrect syntax at the start of MAIN function body

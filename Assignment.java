@@ -4,8 +4,8 @@ import java.util.*;
 
 public class Assignment implements AssignmentConstants {
 
-    ArrayList<String> definedFuncs = new ArrayList<>();
-    ArrayList<String> calledFuncs = new ArrayList<>();
+    ArrayList<String> definedFuncs = new ArrayList<String>();
+    HashMap<String, Integer> calledFuncs = new HashMap<>();
 
     // Hashmap will store the function names alongside sections of the function bodies
     // The arraylist in the map will store each token separately
@@ -17,6 +17,7 @@ public class Assignment implements AssignmentConstants {
     // keeps track of the function that is being parsed
     String currentFunc = "";
     int lineNumber = 1;
+    boolean isMain = false;
     boolean inCall = false;
     boolean divergence = false;
 
@@ -385,36 +386,57 @@ public class Assignment implements AssignmentConstants {
         return stack.pop();
     }
 
-  final public void Start() throws ParseException {String name;
+  final public void Start() throws ParseException {Token p = null;
     Token f = null;
-    String contents = "";
     label_1:
     while (true) {
       try {
         jj_consume_token(DEF);
       } catch (ParseException e) {
-{if (true) throw new ParseException("Missing keyword DEF");}
+printError("Missing keyword DEF at the start of newline", lineNumber);
       }
       try {
         jj_consume_token(SPACE);
       } catch (ParseException e) {
-{if (true) throw new ParseException("Function name after DEF missing");}
+printError("Missing single space after DEF", lineNumber);
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case MAIN:{
-        f = jj_consume_token(MAIN);
-currentFunc = f.image.toString();
+        try {
+          jj_consume_token(MAIN);
+        } catch (ParseException e) {
+printError("Missing MAIN keyword", lineNumber);
+        }
+p = null;
+                currentFunc = "MAIN";
                 functions.put(currentFunc, new ArrayList<>());
                 callsInCurrent = new ArrayList<>();
-        //try {<SPACE>} catch (ParseException e) {throw new ParseException("Main method body is missing");}
-                    contents = Function_Main();
+        try {
+          jj_consume_token(SPACE);
+        } catch (ParseException e) {
+printError("Missing single space after MAIN keyword", lineNumber);
+        }
+        try {
+          p = jj_consume_token(PARAMETER);
+        } catch (ParseException e) {
+
+        }
+if (p != null) {
+                    System.out.println(p.image.toString());
+                    printError("Parameter illegal", lineNumber);
+                }
+        try {
+          Function(null);
+        } catch (ParseException e) {
+printError("MAIN function body missing", lineNumber);
+        }
         break;
         }
       case FUNC_NAME:{
         try {
           f = jj_consume_token(FUNC_NAME);
         } catch (ParseException e) {
-{if (true) throw new ParseException("Error at the function name");}
+printError("Function name missing after space", lineNumber);
         }
 currentFunc = f.image.toString();
                 functions.put(currentFunc, new ArrayList<>());
@@ -422,143 +444,172 @@ currentFunc = f.image.toString();
         try {
           jj_consume_token(SPACE);
         } catch (ParseException e) {
-{if (true) throw new ParseException("Function body after function name is missing");}
+printError("Missing single space after '" + f.image.toString() + "'", lineNumber);
         }
-        contents = Function_Declaration();
-        break;
+        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+        case PARAMETER:{
+          try {
+            p = jj_consume_token(PARAMETER);
+          } catch (ParseException e) {
+printError("Missing parameter after space", lineNumber);
+          }
+          break;
+          }
+        case FUNC_NAME:{
+          p = jj_consume_token(FUNC_NAME);
+printError("Invalid parameter name '" + p.image.toString() + "'", lineNumber);
+          break;
+          }
+        default:
+          jj_la1[0] = jj_gen;
+          jj_consume_token(-1);
+          throw new ParseException();
         }
-      case DEF:{
-        jj_consume_token(DEF);
-printError("Function name cannot be DEF", lineNumber);
-        break;
+        try {
+          jj_consume_token(SPACE);
+        } catch (ParseException e) {
+printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);
         }
-      case STRING:{
-        jj_consume_token(STRING);
-{if (true) throw new ParseException("Invalid characters in the function name");}
+        try {
+          Function(p.image.toString());
+        } catch (ParseException e) {
+printError("Missing function body", lineNumber);
+        }
         break;
         }
       default:
-        jj_la1[0] = jj_gen;
+        jj_la1[1] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
-name = f.image.toString();
-            if (definedFuncs.contains(name)) {
-                printError(name + " is already defined", lineNumber);
-            } else {
-                definedFuncs.add(name);
+// adds all the function names that have been defined
+            if (definedFuncs.contains(currentFunc)) {
+                printError(currentFunc + " is defined more than once", lineNumber);
             }
+            definedFuncs.add(currentFunc);
+      try {
+        jj_consume_token(SPACE);
+      } catch (ParseException e) {
+printError("Missing single space after '}'", lineNumber);
+      }
+      try {
+        jj_consume_token(SEMICOLON);
+      } catch (ParseException e) {
+printError("Missing ';' after right brace", lineNumber);
+      }
+      try {
+        jj_consume_token(EOL);
+      } catch (ParseException e) {
+printError("Missing EOL after ';'", lineNumber-1);
+      }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case DEF:{
         ;
         break;
         }
       default:
-        jj_la1[1] = jj_gen;
+        jj_la1[2] = jj_gen;
         break label_1;
       }
     }
-    jj_consume_token(0);
+    try {
+      jj_consume_token(0);
+    } catch (ParseException e) {
+printError("Missing EOF after last function declaration", lineNumber);
+    }
 if (!definedFuncs.contains("MAIN")) {
             lineNumber = 0;
             printError("MAIN is not defined in the program", lineNumber);
         }
 
-        for (int i = 0; i < calledFuncs.size(); i++) {
-            if (!definedFuncs.contains(calledFuncs.get(i))) {
-                printError(calledFuncs.get(i) + " is not a defined function in the program", lineNumber);
+        for (HashMap.Entry<String, Integer> entry : calledFuncs.entrySet()) {
+            String key = entry.getKey();
+            Integer value = entry.getValue();
+            if (!definedFuncs.contains(key)) {
+                printError(key + " is not defined in the program", value);
             }
         }
 
         System.out.println("PASS");
 }
 
-  final public String Function_Main() throws ParseException {String body = "";
-    jj_consume_token(SPACE);
-    jj_consume_token(LEFT_BRACE);
-    jj_consume_token(SPACE);
+// defines the MAIN function in PLM
+  final public void Function(String p) throws ParseException {
     try {
-      body = Function_Main_Body();
+      jj_consume_token(LBRACE);
     } catch (ParseException e) {
-printError("Main function body is empty", lineNumber);
+printError("Missing '{' after space", lineNumber);
     }
     try {
-      jj_consume_token(16);
+      jj_consume_token(SPACE);
     } catch (ParseException e) {
-printError("Unexpected characters in function body", lineNumber);
+printError("Missing single space after '{'", lineNumber);
     }
     try {
-      jj_consume_token(EOL);
+      Body(p);
     } catch (ParseException e) {
-printError("Unexpected syntax after ';'", lineNumber);
-    }
-lineNumber++;
-        {if ("" != null) return body;}
-    throw new Error("Missing return statement in function");
-}
-
-// If a function is defined, the production rule will capture the name, the parameter defined,
-// and the function body.
-  final public String Function_Declaration() throws ParseException {Token p = null;
-    String name;
-    String func = "";
-    try {
-      p = jj_consume_token(PARAMETER);
-    } catch (ParseException e) {
-printError("Parameter is missing after function definition", lineNumber);
-    }
-    jj_consume_token(17);
-    try {
-      func = Function_Body(p.image.toString());
-    } catch (ParseException e) {
-printError("Function body is empty", lineNumber);
+printError("MAIN method undefined", lineNumber);
     }
     try {
-      jj_consume_token(16);
+      jj_consume_token(SPACE);
     } catch (ParseException e) {
-printError("Syntax error: Missing space, '}' or ';' in declaration", lineNumber);
+printError("Missing single space after MAIN body expression", lineNumber);
     }
     try {
-      jj_consume_token(EOL);
+      jj_consume_token(RBRACE);
     } catch (ParseException e) {
-printError("Unexpected syntax after ';'", lineNumber);
+printError("Missing '}' after space", lineNumber);
     }
 lineNumber++;
-        {if ("" != null) return func;}
-    throw new Error("Missing return statement in function");
 }
 
-// Main body will not have any parameters involved
-  final public String Function_Main_Body() throws ParseException {Token t = null;
-    Token i = null;
-    String body = "";
+// defines the function body in PLM
+  final public void Body(String p) throws ParseException {Token t1 = null;
+    Token t2 = null;
     String call = "";
     try {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case NUMBER:{
-        t = jj_consume_token(NUMBER);
+      case PARAMETER:{
+        t1 = jj_consume_token(PARAMETER);
         break;
         }
-      case MAIN:
+      case NUMBER:{
+        t1 = jj_consume_token(NUMBER);
+        break;
+        }
       case FUNC_NAME:{
-        call = Function_Call(null);
+        call = Function_Call(p);
+        break;
+        }
+      case MAIN:{
+        t1 = jj_consume_token(MAIN);
         break;
         }
       default:
-        jj_la1[2] = jj_gen;
+        jj_la1[3] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
     } catch (ParseException e) {
-printError("Missing numerical value or function call in body", lineNumber);
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
     }
-if (t == null) {
-            body += call;
+if (t1 != null && t1.kind == MAIN) {
+            printError("MAIN function cannot be called", lineNumber);
+        }
+        if (p != null && t1 != null && t1.kind == PARAMETER && !t1.image.toString().equals(p)) {
+            printError("Illegal parameter in body", lineNumber);
+        }
+        if (p == null && t1 != null && t1.kind == PARAMETER) {
+            printError("MAIN cannot contain parameters in body", lineNumber);
+        }
+        // adds the correct token to the function hashmap
+        if (t1 == null) {
             functions.get(currentFunc).add(call);
         } else {
-            body += t.image.toString();
-            functions.get(currentFunc).add(t.image.toString());
+            functions.get(currentFunc).add(t1.image.toString());
         }
+
+        t1 = null;
     label_2:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -568,7 +619,7 @@ if (t == null) {
         break;
         }
       default:
-        jj_la1[3] = jj_gen;
+        jj_la1[4] = jj_gen;
         break label_2;
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -576,161 +627,196 @@ if (t == null) {
         try {
           jj_consume_token(PLUS);
         } catch (ParseException e) {
-printError("Unexpected syntax occurred near '+'", lineNumber);
+printError("Missing '+' operator in expression", lineNumber);
         }
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case NUMBER:{
-          i = jj_consume_token(NUMBER);
-          break;
-          }
-        case MAIN:
-        case FUNC_NAME:{
-          call = Function_Call(null);
-          break;
-          }
-        default:
-          jj_la1[4] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
-        }
-body += "+";
-            functions.get(currentFunc).add("+");
-            if (i == null) {
-                body += call;
-                functions.get(currentFunc).add(call);
-            } else {
-                body += i.image.toString();
-                functions.get(currentFunc).add(i.image.toString());
+functions.get(currentFunc).add("+");
+        try {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case PARAMETER:{
+            t2 = jj_consume_token(PARAMETER);
+            break;
             }
+          case NUMBER:{
+            t2 = jj_consume_token(NUMBER);
+            break;
+            }
+          case FUNC_NAME:{
+            call = Function_Call(p);
+            break;
+            }
+          case MAIN:{
+            t2 = jj_consume_token(MAIN);
+            break;
+            }
+          default:
+            jj_la1[5] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
+          }
+        } catch (ParseException e) {
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
+        }
         break;
         }
       case TIMES:{
         try {
           jj_consume_token(TIMES);
         } catch (ParseException e) {
-printError("Unexpected syntax occurred near '+'", lineNumber);
+printError("Missing '*' operator in expression", lineNumber);
         }
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case NUMBER:{
-          i = jj_consume_token(NUMBER);
-          break;
-          }
-        case MAIN:
-        case FUNC_NAME:{
-          call = Function_Call(null);
-          break;
-          }
-        default:
-          jj_la1[5] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
-        }
-body += "*";
-            functions.get(currentFunc).add("*");
-            if (i == null) {
-                body += call;
-                functions.get(currentFunc).add(call);
-            } else {
-                body += i.image.toString();
-                functions.get(currentFunc).add(i.image.toString());
+functions.get(currentFunc).add("*");
+        try {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case PARAMETER:{
+            t2 = jj_consume_token(PARAMETER);
+            break;
             }
+          case NUMBER:{
+            t2 = jj_consume_token(NUMBER);
+            break;
+            }
+          case FUNC_NAME:{
+            call = Function_Call(p);
+            break;
+            }
+          case MAIN:{
+            t2 = jj_consume_token(MAIN);
+            break;
+            }
+          default:
+            jj_la1[6] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
+          }
+        } catch (ParseException e) {
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
+        }
         break;
         }
       default:
-        jj_la1[6] = jj_gen;
+        jj_la1[7] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
-    }
-{if ("" != null) return body;}
-    throw new Error("Missing return statement in function");
-}
-
-// Calls will be made up of the function name, parenthesis, and a function body which can contains
-// a single value or an expression
-  final public String Function_Call(String arg) throws ParseException {Token f = null;
-    String name;
-    String call = "";
-    String body = "";
-inCall = true;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case FUNC_NAME:{
-      try {
-        f = jj_consume_token(FUNC_NAME);
-      } catch (ParseException e) {
-printError("Function name is missing", lineNumber);
-      }
-      break;
-      }
-    case MAIN:{
-      f = jj_consume_token(MAIN);
-printError("Function name cannot be MAIN", lineNumber);
-      break;
-      }
-    default:
-      jj_la1[7] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
-    }
-name = f.image.toString();
-    jj_consume_token(LEFT_PARENTHESIS);
-    try {
-      body = Function_Call_Body(arg);
-    } catch (ParseException e) {
-printError("Function body is missing", lineNumber);
-    }
-    jj_consume_token(RIGHT_PARENTHESIS);
-// checks if the function call is the same name as the function being declared
-        if (name.equals(currentFunc) || (calledFuncs.contains(name) && !callsInCurrent.contains(name))) {
-            divergence = true;
-        }
-        calledFuncs.add(name);
-        callsInCurrent.add(name);
-        call += name + "(" + body + ")";
-        {if ("" != null) return call;}
-    throw new Error("Missing return statement in function");
-}
-
-  final public String Function_Call_Body(String arg) throws ParseException {Token t = null;
-    Token s = null;
-    Token o = null;
-    String i ;
-    String body = "";
-    String call = "";
-    String token = "";
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case PARAMETER:{
-      t = jj_consume_token(PARAMETER);
-      break;
-      }
-    case NUMBER:{
-      t = jj_consume_token(NUMBER);
-      break;
-      }
-    case MAIN:
-    case FUNC_NAME:{
-      call = Function_Call(arg);
-      break;
-      }
-    default:
-      jj_la1[8] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
-    }
-// Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
-        // 2 Separate checks since there can be just a single value or an expression
-        if (t != null) {
-            i = t.image.toString();
-            if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Parameter not allowed in function body", lineNumber);
-            } else if (arg == null && t.kind == PARAMETER) {
-                printError("MAIN function body cannot have parameters", lineNumber);
+if (t2 != null && t2.kind == MAIN) {
+                printError("MAIN function cannot be called", lineNumber);
+            }
+            // Checks if the parameter is the correct value defined at the start of the function declaration
+            if (p != null && t2 != null && t2.kind == PARAMETER && !t2.image.toString().equals(p)) {
+                printError("Illegal parameter in body", lineNumber);
+            }
+            // Checks if there are parameters when the parser examines the MAIN function
+            if (p == null && t2 != null && t2.kind == PARAMETER) {
+                printError("MAIN cannot contain parameters in body", lineNumber);
+            }
+            // adds the correct token to the functions hashmap
+            if (t2 == null) {
+                functions.get(currentFunc).add(call);
+            } else {
+                functions.get(currentFunc).add(t2.image.toString());
             }
 
-            body += i;
+            t2 = null;
+    }
+}
+
+// defines a function call in PLM
+  final public String Function_Call(String p) throws ParseException {String body = "";
+    Token f = null;
+    try {
+      f = jj_consume_token(FUNC_NAME);
+    } catch (ParseException e) {
+printError("Missing function name in function call", lineNumber);
+    }
+    try {
+      jj_consume_token(LEFT_PARENTHESIS);
+    } catch (ParseException e) {
+printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);
+    }
+    try {
+      body = Call_Body(p);
+    } catch (ParseException e) {
+printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);
+    }
+    try {
+      jj_consume_token(RIGHT_PARENTHESIS);
+    } catch (ParseException e) {
+printError("Missing ')' after function body", lineNumber);
+    }
+String name = f.image.toString();
+        // checks for divergence by seeing if there is RECURSION, or if:
+        // the called function has been called before in the program, AND the current function has been called, and this repeated call is not in the current function body
+        if (name.equals(currentFunc) || (calledFuncs.containsKey(name) && calledFuncs.containsKey(currentFunc) && !callsInCurrent.contains(name))) {
+            divergence = true;
+        }
+        calledFuncs.put(name, lineNumber);
+        callsInCurrent.add(name);
+        body  = name + "(" + body + ")";
+        {if ("" != null) return body;}
+    throw new Error("Missing return statement in function");
+}
+
+// non-terminal used to help store the call token as one string in the hashmap
+  final public String Call_Body(String p) throws ParseException {Token t1 = null;
+    Token t2 = null;
+    String body = "";
+    String call = "";
+    try {
+      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+      case FUNC_NAME:
+      case PARAMETER:
+      case NUMBER:{
+        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+        case PARAMETER:{
+          t1 = jj_consume_token(PARAMETER);
+          break;
+          }
+        case NUMBER:{
+          t1 = jj_consume_token(NUMBER);
+          break;
+          }
+        case FUNC_NAME:{
+          call = Function_Call(p);
+          break;
+          }
+        default:
+          jj_la1[8] = jj_gen;
+          jj_consume_token(-1);
+          throw new ParseException();
+        }
+        break;
+        }
+      case MAIN:{
+        t1 = jj_consume_token(MAIN);
+        break;
+        }
+      default:
+        jj_la1[9] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+      }
+    } catch (ParseException e) {
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
+    }
+if (t1 != null && t1.kind == MAIN) {
+            printError("MAIN function cannot be called", lineNumber);
+        }
+        // checks if the parameter is valid
+        if (p != null && t1 != null && t1.kind == PARAMETER && !t1.image.toString().equals(p)) {
+            printError("Illegal parameter in body", lineNumber);
+        }
+        //checks if a parameter is present when the function is MAIN
+        if (p == null && t1 != null && t1.kind == PARAMETER) {
+            printError("MAIN cannot contain parameters in body", lineNumber);
+        }
+
+        if (t1 != null) {
+            body += t1.image.toString();
         } else {
             body += call;
         }
+
+        t1 = null;
     label_3:
     while (true) {
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -740,174 +826,104 @@ printError("Function body is missing", lineNumber);
         break;
         }
       default:
-        jj_la1[9] = jj_gen;
+        jj_la1[10] = jj_gen;
         break label_3;
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
       case PLUS:{
-        o = jj_consume_token(PLUS);
+        try {
+          jj_consume_token(PLUS);
+        } catch (ParseException e) {
+printError("Missing '+' operator in expression", lineNumber);
+        }
+body += "+";
+        try {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case PARAMETER:{
+            t2 = jj_consume_token(PARAMETER);
+            break;
+            }
+          case NUMBER:{
+            t2 = jj_consume_token(NUMBER);
+            break;
+            }
+          case FUNC_NAME:{
+            call = Function_Call(p);
+            break;
+            }
+          case MAIN:{
+            t2 = jj_consume_token(MAIN);
+            break;
+            }
+          default:
+            jj_la1[11] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
+          }
+        } catch (ParseException e) {
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
+        }
         break;
         }
       case TIMES:{
-        o = jj_consume_token(TIMES);
-        break;
+        try {
+          jj_consume_token(TIMES);
+        } catch (ParseException e) {
+printError("Missing operator '*' from expression", lineNumber);
         }
-      default:
-        jj_la1[10] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
-      }
-if (o.kind == PLUS) {
-                body += "+";
-            } else {
-                body += "*";
+body += "*";
+        try {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case PARAMETER:{
+            t2 = jj_consume_token(PARAMETER);
+            break;
             }
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PARAMETER:{
-        s = jj_consume_token(PARAMETER);
-        break;
-        }
-      case NUMBER:{
-        s = jj_consume_token(NUMBER);
-        break;
-        }
-      case MAIN:
-      case FUNC_NAME:{
-        call = Function_Call(arg);
-        break;
-        }
-      default:
-        jj_la1[11] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
-      }
-// Extra check in case the body contains an expression with + or *
-            if (s != null) {
-                i = s.image.toString();
-                if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Parameter not allowed in function body", lineNumber);
-                } else if (arg == null && s.kind == PARAMETER) {
-                    printError("MAIN function body cannot have parameters", lineNumber);
-                }
-                body += i;
-            } else {
-                body += call;
+          case NUMBER:{
+            t2 = jj_consume_token(NUMBER);
+            break;
             }
-            s = null;
-    }
-{if ("" != null) return body;}
-    throw new Error("Missing return statement in function");
-}
-
-  final public String Function_Body(String arg) throws ParseException {Token t = null;
-    Token s = null;
-    Token o = null;
-    String i ;
-    String body = "";
-    String call = "";
-    String token = "";
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case PARAMETER:{
-      t = jj_consume_token(PARAMETER);
-      break;
-      }
-    case NUMBER:{
-      t = jj_consume_token(NUMBER);
-      break;
-      }
-    case MAIN:
-    case FUNC_NAME:{
-      call = Function_Call(arg);
-      break;
-      }
-    default:
-      jj_la1[12] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
-    }
-// Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
-        // 2 Separate checks since there can be just a single value or an expression
-        if (t != null) {
-            i = t.image.toString();
-            if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Parameter not allowed in function body", lineNumber);
-            } else if (arg == null && t.kind == PARAMETER) {
-                printError("MAIN function body cannot have parameters", lineNumber);
+          case FUNC_NAME:{
+            call = Function_Call(p);
+            break;
             }
-
-            body += i;
-            functions.get(currentFunc).add(i);
-        } else {
-            body += call;
-            functions.get(currentFunc).add(call);
+          case MAIN:{
+            t2 = jj_consume_token(MAIN);
+            break;
+            }
+          default:
+            jj_la1[12] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
+          }
+        } catch (ParseException e) {
+printError("Missing parameter, positive integer, or function call in body", lineNumber);
         }
-    label_4:
-    while (true) {
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PLUS:
-      case TIMES:{
-        ;
         break;
         }
       default:
         jj_la1[13] = jj_gen;
-        break label_4;
-      }
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PLUS:{
-        o = jj_consume_token(PLUS);
-        break;
-        }
-      case TIMES:{
-        o = jj_consume_token(TIMES);
-        break;
-        }
-      default:
-        jj_la1[14] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
       }
-if (o.kind == PLUS) {
-                body += "+";
-                functions.get(currentFunc).add("+");
-            } else {
-                body += "*";
-                functions.get(currentFunc).add("*");
+if (t2 != null && t2.kind == MAIN) {
+                printError("MAIN function cannot be called", lineNumber);
             }
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PARAMETER:{
-        s = jj_consume_token(PARAMETER);
-        break;
-        }
-      case NUMBER:{
-        s = jj_consume_token(NUMBER);
-        break;
-        }
-      case MAIN:
-      case FUNC_NAME:{
-        call = Function_Call(arg);
-        break;
-        }
-      default:
-        jj_la1[15] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
-      }
-// Extra check in case the body contains an expression with + or *
-            if (s != null) {
-                i = s.image.toString();
-                if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Parameter not allowed in function body", lineNumber);
-                } else if (arg == null && s.kind == PARAMETER) {
-                    printError("MAIN function body cannot have parameters", lineNumber);
-                }
-                body += i;
-                functions.get(currentFunc).add(i);
+
+            if (p != null && t2 != null && t2.kind == PARAMETER && !t2.image.toString().equals(p)) {
+                printError("Illegal parameter in body", lineNumber);
+            }
+            if (p == null && t2 != null && t2.kind == PARAMETER) {
+                printError("MAIN cannot contain parameters in body", lineNumber);
+            }
+
+            if (t2 != null) {
+                body += t2.image.toString();
             } else {
                 body += call;
-                functions.get(currentFunc).add(call);
             }
-            s = null;
+
+            // sets t2 as null in case there is more than 1 expression after
+            t2 = null;
     }
 {if ("" != null) return body;}
     throw new Error("Missing return statement in function");
@@ -922,13 +938,13 @@ if (o.kind == PLUS) {
   public Token jj_nt;
   private int jj_ntk;
   private int jj_gen;
-  final private int[] jj_la1 = new int[16];
+  final private int[] jj_la1 = new int[14];
   static private int[] jj_la1_0;
   static {
 	   jj_la1_init_0();
 	}
 	private static void jj_la1_init_0() {
-	   jj_la1_0 = new int[] {0x800e,0x2,0x100c,0x6000,0x100c,0x100c,0x6000,0xc,0x101c,0x6000,0x6000,0x101c,0x101c,0x6000,0x6000,0x101c,};
+	   jj_la1_0 = new int[] {0x30,0x18,0x4,0x78,0x180,0x78,0x78,0x180,0x70,0x78,0x180,0x78,0x78,0x180,};
 	}
 
   /** Constructor with InputStream. */
@@ -942,7 +958,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -956,7 +972,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Constructor. */
@@ -966,7 +982,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -984,7 +1000,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Constructor with generated Token Manager. */
@@ -993,7 +1009,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   /** Reinitialise. */
@@ -1002,7 +1018,7 @@ if (o.kind == PLUS) {
 	 token = new Token();
 	 jj_ntk = -1;
 	 jj_gen = 0;
-	 for (int i = 0; i < 16; i++) jj_la1[i] = -1;
+	 for (int i = 0; i < 14; i++) jj_la1[i] = -1;
   }
 
   private Token jj_consume_token(int kind) throws ParseException {
@@ -1058,7 +1074,7 @@ if (o.kind == PLUS) {
 	   la1tokens[jj_kind] = true;
 	   jj_kind = -1;
 	 }
-	 for (int i = 0; i < 16; i++) {
+	 for (int i = 0; i < 14; i++) {
 	   if (jj_la1[i] == jj_gen) {
 		 for (int j = 0; j < 32; j++) {
 		   if ((jj_la1_0[i] & (1<<j)) != 0) {

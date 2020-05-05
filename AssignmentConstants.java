@@ -9,35 +9,39 @@ public interface AssignmentConstants {
   /** End of File. */
   int EOF = 0;
   /** RegularExpression Id. */
-  int DEF = 1;
+  int EOL = 1;
   /** RegularExpression Id. */
-  int MAIN = 2;
+  int DEF = 2;
   /** RegularExpression Id. */
-  int FUNC_NAME = 3;
+  int MAIN = 3;
   /** RegularExpression Id. */
-  int PARAMETER = 4;
+  int FUNC_NAME = 4;
   /** RegularExpression Id. */
-  int SPACE = 5;
+  int PARAMETER = 5;
   /** RegularExpression Id. */
-  int LEFT_BRACE = 6;
+  int NUMBER = 6;
   /** RegularExpression Id. */
-  int RIGHT_BRACE = 7;
+  int PLUS = 7;
   /** RegularExpression Id. */
-  int LEFT_PARENTHESIS = 8;
+  int TIMES = 8;
   /** RegularExpression Id. */
-  int RIGHT_PARENTHESIS = 9;
+  int STRING = 9;
   /** RegularExpression Id. */
-  int SEMICOLON = 10;
+  int DECIMAL = 10;
   /** RegularExpression Id. */
-  int EOL = 11;
+  int LBRACE = 11;
   /** RegularExpression Id. */
-  int NUMBER = 12;
+  int RBRACE = 12;
   /** RegularExpression Id. */
-  int PLUS = 13;
+  int SPACE = 13;
   /** RegularExpression Id. */
-  int TIMES = 14;
+  int LEFT_PARENTHESIS = 14;
   /** RegularExpression Id. */
-  int STRING = 15;
+  int RIGHT_PARENTHESIS = 15;
+  /** RegularExpression Id. */
+  int SEMICOLON = 16;
+  /** RegularExpression Id. */
+  int SPECIAL = 17;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -45,23 +49,23 @@ public interface AssignmentConstants {
   /** Literal token values. */
   String[] tokenImage = {
     "<EOF>",
+    "<EOL>",
     "\"DEF\"",
     "\"MAIN\"",
     "<FUNC_NAME>",
     "<PARAMETER>",
-    "\" \"",
-    "\"{\"",
-    "\"}\"",
-    "\"(\"",
-    "\")\"",
-    "\";\"",
-    "<EOL>",
     "<NUMBER>",
     "\"+\"",
     "\"*\"",
     "<STRING>",
-    "\" } ;\"",
-    "\" { \"",
+    "<DECIMAL>",
+    "\"{\"",
+    "\"}\"",
+    "\" \"",
+    "\"(\"",
+    "\")\"",
+    "\";\"",
+    "<SPECIAL>",
   };
 
 }
