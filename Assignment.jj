@@ -396,23 +396,27 @@ PARSER_END(Assignment)
 
 /* Keywords of PLM */
 TOKEN: {
+    < EOL : "\n" | "\r" |"\r\n" > |
+    < SPACE : " " > |
     < DEF : "DEF" > |
     < MAIN : "MAIN" > |
     < FUNC_NAME : (["A"-"Z"])+ > |
     < PARAMETER : (["a"-"z"])+ > |
-    < SPACE : " " > |
+    < NUMBER : ["0"-"9"] | ["1"-"9"](["0"-"9"])+ > |
+    < PLUS : "+" > |
+    < TIMES : "*" > |
+    < STRING : (<FUNC_NAME>|<PARAMETER>|<NUMBER>)+ > |
+    < DECIMAL : ("0" | <NUMBER>) "." ("0" | <NUMBER>) >
+}
+
+TOKEN: {
     < LEFT_BRACE : "{" > |
     < RIGHT_BRACE : "}" > |
     < LEFT_PARENTHESIS : "(" > |
     < RIGHT_PARENTHESIS : ")" > |
     < SEMICOLON : ";" > |
-    < EOL : "\n" | "\r" | "\r\n" | "\n\r"> |
-    < NUMBER : ["0"-"9"] | ["1"-"9"](["0"-"9"])+ > |
-    < PLUS : "+" > |
-    < TIMES : "*" > |
-    < STRING : (<FUNC_NAME>|<PARAMETER>|<NUMBER>)+ > |
-    < SPECIAL : (["[", "\\", "^", "$", ".", "|", "?", "*", "+", "(", ")"])+ > }
-
+    < SPECIAL : (["[", "\\", "^", "$", ".", "|", "?"])+ >
+}
 void Start():
 {
     String name;
@@ -441,7 +445,7 @@ void Start():
                 functions.put(currentFunc, new ArrayList<>());
                 callsInCurrent = new ArrayList<>();
             }
-            try {<SPACE>} catch (ParseException e) {throw new ParseException("Function body after function name is missing");}
+            try {<SPACE>} catch (ParseException e) {throw new ParseException("Parameter is missing from function declaration");}
             contents = Function_Declaration()
         |
             <DEF>
@@ -482,18 +486,15 @@ String Function_Main():
 }
 {
     // SPACES AND LEFT BRACE
-    //try {" { "} catch (ParseException e) {printError("Incorrect syntax at the start of function declaration", lineNumber);}
-    <SPACE>
-    <LEFT_BRACE>
-    <SPACE>
+    try {" { "} catch (ParseException e) {printError("Incorrect syntax at the start of MAIN function body", lineNumber);}
 
     //MAIN FUNCTION BODY
     try {body = Function_Main_Body()}
     catch (ParseException e) { printError("Main function body is empty", lineNumber); }
 
     //SPACES AND RIGHT BRACE
-    try {" } ;"} catch (ParseException e) {printError("Unexpected characters in function body", lineNumber);}
-    try {<EOL>} catch (ParseException e) {printError("Unexpected syntax after ';'", lineNumber);}
+    try {" } ;"} catch (ParseException e) {printError("Incorrect syntax at the end of the function declaration", lineNumber);}
+    try {<EOL>} catch (ParseException e) {printError("Missing EOL after function declaration", lineNumber);}
     {
         lineNumber++;
         return body;
@@ -510,10 +511,10 @@ String Function_Declaration():
 }
 {
     // PARAMETER
-    try {p = <PARAMETER>} catch(ParseException e) { printError("Parameter is missing after function definition", lineNumber);}
+    try {p = <PARAMETER>} catch(ParseException e) { printError("Incorrect value for the parameter", lineNumber);}
 
     // SPACES AND LEFT BRACE
-    " { "
+    try {" { "} catch (ParseException e) {printError("Incorrect syntax at the start of function declaration", lineNumber);}
 
     // FUNCTION BODY
     try {func = Function_Body(p.image.toString())}
@@ -526,7 +527,7 @@ String Function_Declaration():
         printError("Syntax error: Missing space, '}' or ';' in declaration", lineNumber);
     }
 
-    try {<EOL>} catch (ParseException e) {printError("Unexpected syntax after ';'", lineNumber);}
+    try {<EOL>} catch (ParseException e) {printError("Missing EOL after function declaration", lineNumber);}
     {
         lineNumber++;
         return func;
@@ -544,7 +545,7 @@ String Function_Main_Body():
     String call = "";
 }
 {
-    try {(t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Missing numerical value or function call in body", lineNumber); }
+    try {(t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
     {
         if (t == null) {
             body += call;
@@ -555,8 +556,8 @@ String Function_Main_Body():
         }
     }
     (
-        try {<PLUS>} catch (ParseException e) {printError("Unexpected syntax occurred near '+'", lineNumber);}
-        (i = <NUMBER> | call = Function_Call(null))
+        try {<PLUS>} catch (ParseException e) {printError("Operator missing in body", lineNumber);}
+        try {(i = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
         {
             body += "+";
             functions.get(currentFunc).add("+");
@@ -569,8 +570,8 @@ String Function_Main_Body():
             }
         }
     |
-        try {<TIMES>} catch (ParseException e) {printError("Unexpected syntax occurred near '+'", lineNumber);}
-        (i = <NUMBER> | call = Function_Call(null))
+        try {<TIMES>} catch (ParseException e) {printError("Operator missing in body", lineNumber);}
+        try {(i = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
         {
             body += "*";
             functions.get(currentFunc).add("*");
@@ -607,13 +608,13 @@ String Function_Call(String arg):
     {name = f.image.toString();}
 
     //LEFT_PARENTHESIS
-    "("
+    try {<LEFT_PARENTHESIS>} catch (ParseException e) {printError("Missing '(' in function call", lineNumber);}
 
     //FUNCTION_BODY
     try {body = Function_Call_Body(arg)} catch (ParseException e) { printError("Function body is missing", lineNumber); }
 
     // RIGHT_PARENTHESES
-    ")"
+    try {<RIGHT_PARENTHESIS>} catch (ParseException e) {printError("Missing ')' in function call", lineNumber);}
 
     {
         // checks if the function call is the same name as the function being declared
@@ -638,14 +639,14 @@ String Function_Call_Body(String arg):
     String token = "";
 }
 {
-    (t = <PARAMETER> | t = <NUMBER> | call = Function_Call(arg))
+    try {(t = <PARAMETER> | t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
     {
         // Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
         // 2 Separate checks since there can be just a single value or an expression
         if (t != null) {
             i = t.image.toString();
             if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Parameter not allowed in function body", lineNumber);
+                printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
             } else if (arg == null && t.kind == PARAMETER) {
                 printError("MAIN function body cannot have parameters", lineNumber);
             }
@@ -656,7 +657,7 @@ String Function_Call_Body(String arg):
         }
     }
     (
-        (o = <PLUS> |o = <TIMES>)
+        try {(o = <PLUS> |o = <TIMES>)} catch (ParseException e) {printError("Missing operator in function  body", lineNumber);}
         {
             if (o.kind == PLUS) {
                 body += "+";
@@ -664,13 +665,13 @@ String Function_Call_Body(String arg):
                 body += "*";
             }
         }
-        (s = <PARAMETER> | s = <NUMBER> | call = Function_Call(arg))
+        try {(s = <PARAMETER> | s = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
         {
             // Extra check in case the body contains an expression with + or *
             if (s != null) {
                 i = s.image.toString();
                 if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Parameter not allowed in function body", lineNumber);
+                    printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
                 } else if (arg == null && s.kind == PARAMETER) {
                     printError("MAIN function body cannot have parameters", lineNumber);
                 }
@@ -695,14 +696,14 @@ String Function_Body(String arg):
     String token = "";
 }
 {
-    (t = <PARAMETER> | t = <NUMBER> | call = Function_Call(arg))
+    try {(t = <PARAMETER> | t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
     {
         // Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
         // 2 Separate checks since there can be just a single value or an expression
         if (t != null) {
             i = t.image.toString();
             if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Parameter not allowed in function body", lineNumber);
+                printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
             } else if (arg == null && t.kind == PARAMETER) {
                 printError("MAIN function body cannot have parameters", lineNumber);
             }
@@ -715,7 +716,7 @@ String Function_Body(String arg):
         }
     }
     (
-        (o = <PLUS> |o = <TIMES>)
+        try {(o = <PLUS> |o = <TIMES>)} catch (ParseException e) {printError("Missing operator(s) in functio body", lineNumber);}
         {
             if (o.kind == PLUS) {
                 body += "+";
@@ -725,13 +726,13 @@ String Function_Body(String arg):
                 functions.get(currentFunc).add("*");
             }
         }
-        (s = <PARAMETER> | s = <NUMBER> | call = Function_Call(arg))
+        try {(s = <PARAMETER> | s = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
         {
             // Extra check in case the body contains an expression with + or *
             if (s != null) {
                 i = s.image.toString();
                 if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Parameter not allowed in function body", lineNumber);
+                    printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
                 } else if (arg == null && s.kind == PARAMETER) {
                     printError("MAIN function body cannot have parameters", lineNumber);
                 }
