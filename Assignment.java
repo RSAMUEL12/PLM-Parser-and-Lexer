@@ -5,14 +5,14 @@ import java.util.*;
 public class Assignment implements AssignmentConstants {
 
     ArrayList<String> definedFuncs = new ArrayList<String>();
-    HashMap<String, Integer> calledFuncs = new HashMap<>();
+    HashMap<String, Integer> calledFuncs = new HashMap<String, Integer>();
 
     // Hashmap will store the function names alongside sections of the function bodies
     // The arraylist in the map will store each token separately
-    HashMap<String, ArrayList<String>> functions = new HashMap<>();
+    HashMap<String, ArrayList<String>> functions = new HashMap<String, ArrayList<String>>();
 
     // stores all the functions called in the currentFunc
-    ArrayList<String> callsInCurrent = new ArrayList<>();
+    ArrayList<String> callsInCurrent = new ArrayList<String>();
 
     // keeps track of the function that is being parsed
     String currentFunc = "";
@@ -45,9 +45,7 @@ public class Assignment implements AssignmentConstants {
     }
 
     public static void evaluateProgram(Assignment parser) {
-        System.out.println(parser.functions.get("A"));
         String mainExpression = decomposeFunction(parser, "MAIN", "");
-        System.out.println(mainExpression);
         // returns a stack of operations in a postfix order
         Queue<String> exp = infixToPostfix(mainExpression);
         int result = evaluatePostfix(exp);
@@ -133,7 +131,6 @@ public class Assignment implements AssignmentConstants {
         boolean callPresent = false; // tells the function there is a function call that needs to be decomposed
 
         for (String s : functionDefinition) {
-            System.out.println(s);
             if (isNumeric(s)) {
                 //System.out.println("Number");
                 newFunction += s;
@@ -178,7 +175,6 @@ public class Assignment implements AssignmentConstants {
 
         }
 
-        System.out.println("Exiting...");
         return newFunction;
     }
 
@@ -264,10 +260,10 @@ public class Assignment implements AssignmentConstants {
     {
         // initializing empty String for result
         String result = new String("");
-        Queue<String> postfix = new LinkedList<>();
+        Queue<String> postfix = new LinkedList<String>();
 
         // initializing empty stack
-        Stack<String> stack = new Stack<>();
+        Stack<String> stack = new Stack<String>();
 
         for (int i = 0; i<exp.length(); ++i)
         {
@@ -292,7 +288,6 @@ public class Assignment implements AssignmentConstants {
                     }
                 }
                 String s = exp.substring(startInt, endInt+1);
-                System.out.println(s);
                 result += s;
                 postfix.add(s);
                 i = endInt;
@@ -345,14 +340,13 @@ public class Assignment implements AssignmentConstants {
             result += elem;
             postfix.add(elem);
         }
-        System.out.println(postfix);
         return postfix;
     }
 
     // Method to evaluate value of a postfix expression from a queue of tokens(operands and operators)
     public static int evaluatePostfix(Queue<String> exp) {
         //create a stack
-        Stack<Integer> stack=new Stack<>();
+        Stack<Integer> stack=new Stack<Integer>();
 
         // Scan all characters one by one
         while (!exp.isEmpty())
@@ -409,8 +403,8 @@ printError("Missing MAIN keyword", lineNumber);
         }
 p = null;
                 currentFunc = "MAIN";
-                functions.put(currentFunc, new ArrayList<>());
-                callsInCurrent = new ArrayList<>();
+                functions.put(currentFunc, new ArrayList<String>());
+                callsInCurrent = new ArrayList<String>();
         try {
           jj_consume_token(SPACE);
         } catch (ParseException e) {
@@ -422,7 +416,6 @@ printError("Missing single space after MAIN keyword", lineNumber);
 
         }
 if (p != null) {
-                    System.out.println(p.image.toString());
                     printError("Parameter illegal", lineNumber);
                 }
         try {
@@ -439,8 +432,8 @@ printError("MAIN function body missing", lineNumber);
 printError("Function name missing after space", lineNumber);
         }
 currentFunc = f.image.toString();
-                functions.put(currentFunc, new ArrayList<>());
-                callsInCurrent = new ArrayList<>();
+                functions.put(currentFunc, new ArrayList<String>());
+                callsInCurrent = new ArrayList<String>();
         try {
           jj_consume_token(SPACE);
         } catch (ParseException e) {
@@ -591,7 +584,7 @@ lineNumber++;
         throw new ParseException();
       }
     } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
     }
 if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -654,7 +647,7 @@ functions.get(currentFunc).add("+");
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
         }
         break;
         }
@@ -689,7 +682,7 @@ functions.get(currentFunc).add("*");
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
         }
         break;
         }
@@ -796,7 +789,7 @@ String name = f.image.toString();
         throw new ParseException();
       }
     } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
     }
 if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -861,7 +854,7 @@ body += "+";
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
         }
         break;
         }
@@ -896,7 +889,7 @@ body += "*";
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Missing parameter, positive integer, or function call in body", lineNumber);
+printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
         }
         break;
         }

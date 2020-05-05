@@ -1,2 +1,2 @@
-DEF MAIN { N(893*432+9999*32*+23) } ;
-DEF N x { x } ;
+DEF MAIN { ABCD(1) } ;
+DEF ABCD x { x +1 } ;

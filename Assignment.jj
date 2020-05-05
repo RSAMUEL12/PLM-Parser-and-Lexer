@@ -2,6 +2,10 @@ options {
     STATIC = false;
 }
 
+// This PLM parser performs 2 main operations: Parsing and Evaluation
+// The Parsing task makes sure that the input code follows the rules of the PLM language correctly
+// The Evaluation task will take the validated program code and provides a correct output.
+
 PARSER_BEGIN(Assignment)
 
 import java.util.*;
@@ -519,7 +523,7 @@ void Body(String p):
 }
 {
     try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p) | t1 = <MAIN>)}
-    catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+    catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
     {
         if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -547,14 +551,14 @@ void Body(String p):
             {functions.get(currentFunc).add("+");}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
         |
             // MULTIPLICATION expressions
             try {<TIMES>} catch (ParseException e) {printError("Missing '*' operator in expression", lineNumber);}
             {functions.get(currentFunc).add("*");}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
         )
 
         // Conditional checks for legality of the parameter values
@@ -622,7 +626,7 @@ String Call_Body(String p):
 }
 {
     try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p)) | t1 = <MAIN>}
-    catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+    catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
     {
         if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -652,14 +656,14 @@ String Call_Body(String p):
             {body += "+";}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
         |
             //MULTIPLICATION expression
             try {<TIMES>} catch (ParseException e) {printError("Missing operator '*' from expression", lineNumber);}
             {body += "*";}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
         )
         {
             if (t2 != null && t2.kind == MAIN) {
