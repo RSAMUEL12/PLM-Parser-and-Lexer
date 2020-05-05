@@ -9,7 +9,7 @@ import java.util.*;
 public class Assignment{
 
     ArrayList<String> definedFuncs = new ArrayList<>();
-    ArrayList<String> calledFuncs = new ArrayList<>();
+    HashMap<String, Integer> calledFuncs = new HashMap<>();
 
     // Hashmap will store the function names alongside sections of the function bodies
     // The arraylist in the map will store each token separately
@@ -21,6 +21,7 @@ public class Assignment{
     // keeps track of the function that is being parsed
     String currentFunc = "";
     int lineNumber = 1;
+    boolean isMain = false;
     boolean inCall = false;
     boolean divergence = false;
 
@@ -397,7 +398,6 @@ PARSER_END(Assignment)
 /* Keywords of PLM */
 TOKEN: {
     < EOL : "\n" | "\r" |"\r\n" > |
-    < SPACE : " " > |
     < DEF : "DEF" > |
     < MAIN : "MAIN" > |
     < FUNC_NAME : (["A"-"Z"])+ > |
@@ -409,9 +409,13 @@ TOKEN: {
     < DECIMAL : ("0" | <NUMBER>) "." ("0" | <NUMBER>) >
 }
 
+TOKEN : {
+    < LBRACE : "{" > |
+    < RBRACE : "}" > |
+    < SPACE : " " >
+}
+
 TOKEN: {
-    < LEFT_BRACE : "{" > |
-    < RIGHT_BRACE : "}" > |
     < LEFT_PARENTHESIS : "(" > |
     < RIGHT_PARENTHESIS : ")" > |
     < SEMICOLON : ";" > |
@@ -419,60 +423,79 @@ TOKEN: {
 }
 void Start():
 {
-    String name;
+    Token p = null;
     Token f = null;
-    String contents = "";
 }
 {
+    // one or more functions can be implemented in the PLM program
+    // but there has to be at least one function otherwise it is not valid.
     (
-        // Main and Declaration production rules are broken down to the function names
-        // in order to avoid choice conflicts
-        try {<DEF>} catch (ParseException e) {throw new ParseException("Missing keyword DEF");}
-        try {<SPACE>} catch (ParseException e) {throw new ParseException("Function name after DEF missing");}
+        try {<DEF>} catch (ParseException e) {printError("Missing keyword DEF at the start of newline", lineNumber);}
+        try {<SPACE>} catch (ParseException e) {printError("Missing single space after DEF", lineNumber);}
         (
-            f = <MAIN>
+            // MAIN METHOD
+            try {<MAIN>} catch (ParseException e) {printError("Missing MAIN keyword", lineNumber);}
+            {
+                p = null;
+                currentFunc = "MAIN";
+                functions.put(currentFunc, new ArrayList<>());
+                callsInCurrent = new ArrayList<>();
+            }
+            try {<SPACE>} catch (ParseException e) {printError("Missing single space after MAIN keyword", lineNumber);}
+
+            // checks made to see if a parameter is entered in the MAIN function
+            try {p = <PARAMETER>} catch (ParseException e) {}
+            {
+                if (p != null) {
+                    System.out.println(p.image.toString());
+                    printError("Parameter illegal", lineNumber);
+                }
+            }
+            try {Function(null)} catch (ParseException e) {printError("MAIN function body missing", lineNumber);}
+        |
+            // OTHER FUNCTION DECLARATIONS
+            try {f = <FUNC_NAME>} catch (ParseException e) {printError("Function name missing after space", lineNumber);}
             {
                 currentFunc = f.image.toString();
                 functions.put(currentFunc, new ArrayList<>());
                 callsInCurrent = new ArrayList<>();
             }
-            //try {<SPACE>} catch (ParseException e) {throw new ParseException("Main method body is missing");}
-            contents = Function_Main()
-        |
-            try {f = <FUNC_NAME>} catch (ParseException e) {throw new ParseException("Error at the function name");}
-            {
-                currentFunc = f.image.toString();
-                functions.put(currentFunc, new ArrayList<>());
-                callsInCurrent = new ArrayList<>();
-            }
-            try {<SPACE>} catch (ParseException e) {throw new ParseException("Parameter is missing from function declaration");}
-            contents = Function_Declaration()
-        |
-            <DEF>
-            { printError("Function name cannot be DEF", lineNumber); }
-        |
-            <STRING>
-            {throw new ParseException("Invalid characters in the function name");}
+            try {<SPACE>} catch (ParseException e) {printError("Missing single space after '" + f.image.toString() + "'", lineNumber);}
+
+            (
+                try {p = <PARAMETER>} catch (ParseException e) {printError("Missing parameter after space", lineNumber);}
+            |
+                (p = <FUNC_NAME>) {printError("Invalid parameter name '" + p.image.toString() + "'", lineNumber);}
+            )
+
+            try {<SPACE>} catch (ParseException e) {printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);}
+
+            try {Function(p.image.toString())} catch (ParseException e) {printError("Missing function body", lineNumber);}
         )
         {
-            name = f.image.toString();
-            if (definedFuncs.contains(name)) {
-                printError(name + " is already defined", lineNumber);
-            } else {
-                definedFuncs.add(name);
+            // adds all the function names that have been defined
+            if (definedFuncs.contains(currentFunc)) {
+                printError(currentFunc + " is defined more than once", lineNumber);
             }
+            definedFuncs.add(currentFunc);
         }
+        try {<SPACE>} catch (ParseException e) {printError("Missing single space after '}'", lineNumber);}
+        try {<SEMICOLON>} catch (ParseException e) {printError("Missing ';' after right brace", lineNumber);}
+        try {<EOL>} catch (ParseException e) {printError("Missing EOL after ';'", lineNumber-1);}
     )+
-    <EOF>
+    try {<EOF>} catch (ParseException e) {printError("Missing EOF after last function declaration", lineNumber);}
+
     {
         if (!definedFuncs.contains("MAIN")) {
             lineNumber = 0;
             printError("MAIN is not defined in the program", lineNumber);
         }
 
-        for (int i = 0; i < calledFuncs.size(); i++) {
-            if (!definedFuncs.contains(calledFuncs.get(i))) {
-                printError(calledFuncs.get(i) + " is not a defined function in the program", lineNumber);
+        for (HashMap.Entry<String, Integer> entry : calledFuncs.entrySet()) {
+            String key = entry.getKey();
+            Integer value = entry.getValue();
+            if (!definedFuncs.contains(key)) {
+                printError(key + " is not defined in the program", value);
             }
         }
 
@@ -480,278 +503,192 @@ void Start():
     }
 }
 
-String Function_Main():
+// defines the MAIN function in PLM
+void Function(String p):
+{}
 {
-    String body = "";
-}
-{
-    // SPACES AND LEFT BRACE
-    try {" { "} catch (ParseException e) {printError("Incorrect syntax at the start of MAIN function body", lineNumber);}
-
-    //MAIN FUNCTION BODY
-    try {body = Function_Main_Body()}
-    catch (ParseException e) { printError("Main function body is empty", lineNumber); }
-
-    //SPACES AND RIGHT BRACE
-    try {" } ;"} catch (ParseException e) {printError("Incorrect syntax at the end of the function declaration", lineNumber);}
-    try {<EOL>} catch (ParseException e) {printError("Missing EOL after function declaration", lineNumber);}
+    try {<LBRACE>} catch (ParseException e) {printError("Missing '{' after space", lineNumber);}
+    try {<SPACE>} catch (ParseException e) {printError("Missing single space after '{'", lineNumber);}
+    try {Body(p)} catch (ParseException e) {printError("MAIN method undefined", lineNumber);}
+    try {<SPACE>} catch (ParseException e) {printError("Missing single space after MAIN body expression", lineNumber);}
+    try {<RBRACE>} catch (ParseException e) {printError("Missing '}' after space", lineNumber);}
     {
         lineNumber++;
+    }
+}
+
+// defines the function body in PLM
+void Body(String p):
+{
+    Token t1 = null;
+    Token t2 = null;
+    String call = "";
+}
+{
+    try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p) | t1 = <MAIN>)}
+    catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+    {
+        if (t1 != null && t1.kind == MAIN) {
+            printError("MAIN function cannot be called", lineNumber);
+        }
+        if (p != null && t1 != null && t1.kind == PARAMETER && !t1.image.toString().equals(p)) {
+            printError("Illegal parameter in body", lineNumber);
+        }
+        if (p == null && t1 != null && t1.kind == PARAMETER) {
+            printError("MAIN cannot contain parameters in body", lineNumber);
+        }
+        // adds the correct token to the function hashmap
+        if (t1 == null) {
+            functions.get(currentFunc).add(call);
+        } else {
+            functions.get(currentFunc).add(t1.image.toString());
+        }
+
+        t1 = null;
+    }
+
+    (
+        (
+            // ADDITION expressions
+            try {<PLUS>} catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            {functions.get(currentFunc).add("+");}
+
+            try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
+            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+        |
+            // MULTIPLICATION expressions
+            try {<TIMES>} catch (ParseException e) {printError("Missing '*' operator in expression", lineNumber);}
+            {functions.get(currentFunc).add("*");}
+
+            try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
+            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+        )
+
+        // Conditional checks for legality of the parameter values
+        {
+            if (t2 != null && t2.kind == MAIN) {
+                printError("MAIN function cannot be called", lineNumber);
+            }
+            // Checks if the parameter is the correct value defined at the start of the function declaration
+            if (p != null && t2 != null && t2.kind == PARAMETER && !t2.image.toString().equals(p)) {
+                printError("Illegal parameter in body", lineNumber);
+            }
+            // Checks if there are parameters when the parser examines the MAIN function
+            if (p == null && t2 != null && t2.kind == PARAMETER) {
+                printError("MAIN cannot contain parameters in body", lineNumber);
+            }
+            // adds the correct token to the functions hashmap
+            if (t2 == null) {
+                functions.get(currentFunc).add(call);
+            } else {
+                functions.get(currentFunc).add(t2.image.toString());
+            }
+
+            t2 = null;
+        }
+    )*
+}
+
+// defines a function call in PLM
+String Function_Call(String p):
+{
+    String body = "";
+    Token f = null;
+}
+{
+    try {f = <FUNC_NAME>} catch (ParseException e) {printError("Missing function name in function call", lineNumber);}
+
+    try {<LEFT_PARENTHESIS>} catch (ParseException e) {printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);}
+
+    try {body = Call_Body(p)} catch (ParseException e) {printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);}
+
+    try {<RIGHT_PARENTHESIS>} catch (ParseException e) {printError("Missing ')' after function body", lineNumber);}
+
+
+    {
+        String name = f.image.toString();
+        // checks for divergence by seeing if there is RECURSION, or if:
+        // the called function has been called before in the program, AND the current function has been called, and this repeated call is not in the current function body
+        if (name.equals(currentFunc) || (calledFuncs.containsKey(name) && calledFuncs.containsKey(currentFunc) && !callsInCurrent.contains(name))) {
+            divergence = true;
+        }
+        calledFuncs.put(name, lineNumber);
+        callsInCurrent.add(name);
+        body  = name + "(" + body + ")";
         return body;
     }
 }
 
-// If a function is defined, the production rule will capture the name, the parameter defined,
-// and the function body.
-String Function_Declaration():
+// non-terminal used to help store the call token as one string in the hashmap
+String Call_Body(String p):
 {
-    Token p = null;
-    String name;
-    String func = "";
-}
-{
-    // PARAMETER
-    try {p = <PARAMETER>} catch(ParseException e) { printError("Incorrect value for the parameter", lineNumber);}
-
-    // SPACES AND LEFT BRACE
-    try {" { "} catch (ParseException e) {printError("Incorrect syntax at the start of function declaration", lineNumber);}
-
-    // FUNCTION BODY
-    try {func = Function_Body(p.image.toString())}
-    catch (ParseException e) {printError("Function body is empty", lineNumber);}
-
-    // SPACES AND RIGHT BRACE
-    try {
-        " } ;"
-    } catch (ParseException e) {
-        printError("Syntax error: Missing space, '}' or ';' in declaration", lineNumber);
-    }
-
-    try {<EOL>} catch (ParseException e) {printError("Missing EOL after function declaration", lineNumber);}
-    {
-        lineNumber++;
-        return func;
-    }
-
-
-}
-
-// Main body will not have any parameters involved
-String Function_Main_Body():
-{
-    Token t = null;
-    Token i = null;
+    Token t1 = null;
+    Token t2 = null;
     String body = "";
     String call = "";
 }
 {
-    try {(t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
+    try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p)) | t1 = <MAIN>}
+    catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
     {
-        if (t == null) {
-            body += call;
-            functions.get(currentFunc).add(call);
-        } else {
-            body += t.image.toString();
-            functions.get(currentFunc).add(t.image.toString());
+        if (t1 != null && t1.kind == MAIN) {
+            printError("MAIN function cannot be called", lineNumber);
         }
-    }
-    (
-        try {<PLUS>} catch (ParseException e) {printError("Operator missing in body", lineNumber);}
-        try {(i = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-        {
-            body += "+";
-            functions.get(currentFunc).add("+");
-            if (i == null) {
-                body += call;
-                functions.get(currentFunc).add(call);
-            } else {
-                body += i.image.toString();
-                functions.get(currentFunc).add(i.image.toString());
-            }
+        // checks if the parameter is valid
+        if (p != null && t1 != null && t1.kind == PARAMETER && !t1.image.toString().equals(p)) {
+            printError("Illegal parameter in body", lineNumber);
         }
-    |
-        try {<TIMES>} catch (ParseException e) {printError("Operator missing in body", lineNumber);}
-        try {(i = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-        {
-            body += "*";
-            functions.get(currentFunc).add("*");
-            if (i == null) {
-                body += call;
-                functions.get(currentFunc).add(call);
-            } else {
-                body += i.image.toString();
-                functions.get(currentFunc).add(i.image.toString());
-            }
+        //checks if a parameter is present when the function is MAIN
+        if (p == null && t1 != null && t1.kind == PARAMETER) {
+            printError("MAIN cannot contain parameters in body", lineNumber);
         }
-    )*
 
-    { return body; }
-}
-
-// Calls will be made up of the function name, parenthesis, and a function body which can contains
-// a single value or an expression
-String Function_Call(String arg):
-{
-    Token f = null;
-    String name;
-    String call = "";
-    String body = "";
-}
-{
-    {inCall = true;}
-    //FUNC_NAME
-    (
-        try {(f = <FUNC_NAME>)} catch (ParseException e) { printError("Function name is missing", lineNumber); }
-    |
-        f = <MAIN> {printError("Function name cannot be MAIN", lineNumber);}
-    )
-    {name = f.image.toString();}
-
-    //LEFT_PARENTHESIS
-    try {<LEFT_PARENTHESIS>} catch (ParseException e) {printError("Missing '(' in function call", lineNumber);}
-
-    //FUNCTION_BODY
-    try {body = Function_Call_Body(arg)} catch (ParseException e) { printError("Function body is missing", lineNumber); }
-
-    // RIGHT_PARENTHESES
-    try {<RIGHT_PARENTHESIS>} catch (ParseException e) {printError("Missing ')' in function call", lineNumber);}
-
-    {
-        // checks if the function call is the same name as the function being declared
-        if (name.equals(currentFunc) || (calledFuncs.contains(name) && !callsInCurrent.contains(name))) {
-            divergence = true;
-        }
-        calledFuncs.add(name);
-        callsInCurrent.add(name);
-        call += name + "(" + body + ")";
-        return call;
-    }
-}
-
-String Function_Call_Body(String arg):
-{
-    Token t = null;
-    Token s = null;
-    Token o = null;
-    String i ;
-    String body = "";
-    String call = "";
-    String token = "";
-}
-{
-    try {(t = <PARAMETER> | t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-    {
-        // Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
-        // 2 Separate checks since there can be just a single value or an expression
-        if (t != null) {
-            i = t.image.toString();
-            if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
-            } else if (arg == null && t.kind == PARAMETER) {
-                printError("MAIN function body cannot have parameters", lineNumber);
-            }
-
-            body += i;
+        if (t1 != null) {
+            body += t1.image.toString();
         } else {
             body += call;
         }
+
+        t1 = null;
     }
+
     (
-        try {(o = <PLUS> |o = <TIMES>)} catch (ParseException e) {printError("Missing operator in function  body", lineNumber);}
+        (
+            //ADDITION expression
+            try {<PLUS>} catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            {body += "+";}
+
+            try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
+            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+        |
+            //MULTIPLICATION expression
+            try {<TIMES>} catch (ParseException e) {printError("Missing operator '*' from expression", lineNumber);}
+            {body += "*";}
+
+            try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
+            catch (ParseException e) {printError("Missing parameter, positive integer, or function call in body", lineNumber);}
+        )
         {
-            if (o.kind == PLUS) {
-                body += "+";
-            } else {
-                body += "*";
+            if (t2 != null && t2.kind == MAIN) {
+                printError("MAIN function cannot be called", lineNumber);
             }
-        }
-        try {(s = <PARAMETER> | s = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-        {
-            // Extra check in case the body contains an expression with + or *
-            if (s != null) {
-                i = s.image.toString();
-                if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
-                } else if (arg == null && s.kind == PARAMETER) {
-                    printError("MAIN function body cannot have parameters", lineNumber);
-                }
-                body += i;
+
+            if (p != null && t2 != null && t2.kind == PARAMETER && !t2.image.toString().equals(p)) {
+                printError("Illegal parameter in body", lineNumber);
+            }
+            if (p == null && t2 != null && t2.kind == PARAMETER) {
+                printError("MAIN cannot contain parameters in body", lineNumber);
+            }
+
+            if (t2 != null) {
+                body += t2.image.toString();
             } else {
                 body += call;
             }
-            s = null;
+
+            // sets t2 as null in case there is more than 1 expression after
+            t2 = null;
         }
     )*
     { return body; }
 }
-
-String Function_Body(String arg):
-{
-    Token t = null;
-    Token s = null;
-    Token o = null;
-    String i ;
-    String body = "";
-    String call = "";
-    String token = "";
-}
-{
-    try {(t = <PARAMETER> | t = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-    {
-        // Checks to see if the parameter defined in the function declaration is the same as the parameter in the body
-        // 2 Separate checks since there can be just a single value or an expression
-        if (t != null) {
-            i = t.image.toString();
-            if (t.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
-            } else if (arg == null && t.kind == PARAMETER) {
-                printError("MAIN function body cannot have parameters", lineNumber);
-            }
-
-            body += i;
-            functions.get(currentFunc).add(i);
-        } else {
-            body += call;
-            functions.get(currentFunc).add(call);
-        }
-    }
-    (
-        try {(o = <PLUS> |o = <TIMES>)} catch (ParseException e) {printError("Missing operator(s) in functio body", lineNumber);}
-        {
-            if (o.kind == PLUS) {
-                body += "+";
-                functions.get(currentFunc).add("+");
-            } else {
-                body += "*";
-                functions.get(currentFunc).add("*");
-            }
-        }
-        try {(s = <PARAMETER> | s = <NUMBER> | call = Function_Call(null))} catch (ParseException e) { printError("Incorrect or missing values in function body", lineNumber); }
-        {
-            // Extra check in case the body contains an expression with + or *
-            if (s != null) {
-                i = s.image.toString();
-                if (s.kind == PARAMETER && i.equals(arg) == false && arg != null){
-                    printError("Unexpected parameter value '" + i + "'. Expecting '" + arg + "'", lineNumber);
-                } else if (arg == null && s.kind == PARAMETER) {
-                    printError("MAIN function body cannot have parameters", lineNumber);
-                }
-                body += i;
-                functions.get(currentFunc).add(i);
-            } else {
-                body += call;
-                functions.get(currentFunc).add(call);
-            }
-            s = null;
-        }
-    )*
-    { return body; }
-}
-
-
-
-
-
-
-
-
