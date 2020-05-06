@@ -25,23 +25,19 @@ public interface AssignmentConstants {
   /** RegularExpression Id. */
   int TIMES = 8;
   /** RegularExpression Id. */
-  int STRING = 9;
+  int LBRACE = 9;
   /** RegularExpression Id. */
-  int DECIMAL = 10;
+  int RBRACE = 10;
   /** RegularExpression Id. */
-  int LBRACE = 11;
+  int SPACE = 11;
   /** RegularExpression Id. */
-  int RBRACE = 12;
+  int LEFT_PARENTHESIS = 12;
   /** RegularExpression Id. */
-  int SPACE = 13;
+  int RIGHT_PARENTHESIS = 13;
   /** RegularExpression Id. */
-  int LEFT_PARENTHESIS = 14;
+  int SEMICOLON = 14;
   /** RegularExpression Id. */
-  int RIGHT_PARENTHESIS = 15;
-  /** RegularExpression Id. */
-  int SEMICOLON = 16;
-  /** RegularExpression Id. */
-  int SPECIAL = 17;
+  int SPECIAL = 15;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -57,8 +53,6 @@ public interface AssignmentConstants {
     "<NUMBER>",
     "\"+\"",
     "\"*\"",
-    "<STRING>",
-    "<DECIMAL>",
     "\"{\"",
     "\"}\"",
     "\" \"",

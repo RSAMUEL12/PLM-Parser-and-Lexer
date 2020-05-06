@@ -12,7 +12,9 @@ import java.util.*;
 
 public class Assignment{
 
+    // ArrayList to keep track of all defined functions
     ArrayList<String> definedFuncs = new ArrayList<String>();
+    // Hashmap that keeps track of all called functions and the line number they are called from
     HashMap<String, Integer> calledFuncs = new HashMap<String, Integer>();
 
     // Hashmap will store the function names alongside sections of the function bodies
@@ -24,9 +26,9 @@ public class Assignment{
 
     // keeps track of the function that is being parsed
     String currentFunc = "";
+    // counter to keep track of line number
     int lineNumber = 1;
-    boolean isMain = false;
-    boolean inCall = false;
+    // boolean value to indicate divergence (when circular dependencies between functions occur)
     boolean divergence = false;
 
     public static void main(String args []) throws ParseException, TokenMgrError {
@@ -40,6 +42,7 @@ public class Assignment{
             System.err.println(e.getMessage());
             System.exit(0);
         }
+        // function will perform checks for divergence before continuing to find an output value
         checkDivergence(parser);
         evaluateProgram(parser);
     }
@@ -52,10 +55,13 @@ public class Assignment{
         System.exit(0);
     }
 
+    // Evaluation method to retrieve all necessary values
     public static void evaluateProgram(Assignment parser) {
+        // Breaks down the MAIN method into the basic arithmetic expressions - function calls are reduced to their expressions
         String mainExpression = decomposeFunction(parser, "MAIN", "");
-        // returns a stack of operations in a postfix order
+        // Converts the expression from decomposeFunction into Postfix for evaluating the correct value
         Queue<String> exp = infixToPostfix(mainExpression);
+        // The final result
         int result = evaluatePostfix(exp);
         System.out.println(result);
 
@@ -402,9 +408,7 @@ TOKEN: {
     < PARAMETER : (["a"-"z"])+ > |
     < NUMBER : ["0"-"9"] | ["1"-"9"](["0"-"9"])+ > |
     < PLUS : "+" > |
-    < TIMES : "*" > |
-    < STRING : (<FUNC_NAME>|<PARAMETER>|<NUMBER>)+ > |
-    < DECIMAL : ("0" | <NUMBER>) "." ("0" | <NUMBER>) >
+    < TIMES : "*" >
 }
 
 TOKEN : {
@@ -428,18 +432,27 @@ void Start():
     // one or more functions can be implemented in the PLM program
     // but there has to be at least one function otherwise it is not valid.
     (
-        try {<DEF>} catch (ParseException e) {printError("Missing keyword DEF at the start of newline", lineNumber);}
-        try {<SPACE>} catch (ParseException e) {printError("Missing single space after DEF", lineNumber);}
+        try {<DEF>}
+        catch (ParseException e) {printError("Missing keyword DEF at the start of newline", lineNumber);}
+        catch (TokenMgrError e) {printError("Invalid syntax for DEF keyword", lineNumber);}
+
+        try {<SPACE>}
+        catch (ParseException e) {printError("Missing single space after DEF", lineNumber);}
+        catch (TokenMgrError e) {printError("Missing single space after DEF", lineNumber);}
         (
             // MAIN METHOD
-            try {<MAIN>} catch (ParseException e) {printError("Missing MAIN keyword", lineNumber);}
+            try {<MAIN>}
+            catch (ParseException e) {printError("Missing MAIN keyword", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing MAIN keyword", lineNumber);}
             {
                 p = null;
                 currentFunc = "MAIN";
                 functions.put(currentFunc, new ArrayList<String>());
                 callsInCurrent = new ArrayList<String>();
             }
-            try {<SPACE>} catch (ParseException e) {printError("Missing single space after MAIN keyword", lineNumber);}
+            try {<SPACE>}
+            catch (ParseException e) {printError("Missing single space after MAIN keyword", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing single space after MAIN keyword", lineNumber);}
 
             // checks made to see if a parameter is entered in the MAIN function
             try {p = <PARAMETER>} catch (ParseException e) {}
@@ -448,26 +461,39 @@ void Start():
                     printError("Parameter illegal", lineNumber);
                 }
             }
-            try {Function(null)} catch (ParseException e) {printError("MAIN function body missing", lineNumber);}
+            try {Function(null)}
+            catch (ParseException e) {printError("MAIN function body missing", lineNumber);}
+            catch (TokenMgrError e) {printError("MAIN function body missing", lineNumber);}
         |
             // OTHER FUNCTION DECLARATIONS
-            try {f = <FUNC_NAME>} catch (ParseException e) {printError("Function name missing after space", lineNumber);}
+            try {f = <FUNC_NAME>}
+            catch (ParseException e) {printError("Function name missing after space", lineNumber);}
+            catch (TokenMgrError e) {printError("Function name missing after space", lineNumber);}
             {
                 currentFunc = f.image.toString();
                 functions.put(currentFunc, new ArrayList<String>());
                 callsInCurrent = new ArrayList<String>();
             }
-            try {<SPACE>} catch (ParseException e) {printError("Missing single space after '" + f.image.toString() + "'", lineNumber);}
+            try {<SPACE>}
+            catch (ParseException e) {printError("Missing single space after '" + f.image.toString() + "'", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing single space after '" + f.image.toString() + "'", lineNumber);}
 
-            (
-                try {p = <PARAMETER>} catch (ParseException e) {printError("Missing parameter after space", lineNumber);}
+            try
+            {(
+                p = <PARAMETER>
             |
                 (p = <FUNC_NAME>) {printError("Invalid parameter name '" + p.image.toString() + "'", lineNumber);}
-            )
+            )}
+            catch (ParseException e) {printError("Missing parameter after function '" + currentFunc + "'", lineNumber);}
+            catch (TokenMgrError e) {printError("Invalid syntax for parameter name after '" + currentFunc + "'", lineNumber);}
 
-            try {<SPACE>} catch (ParseException e) {printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);}
+            try {<SPACE>}
+            catch (ParseException e) {printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);}
 
-            try {Function(p.image.toString())} catch (ParseException e) {printError("Missing function body", lineNumber);}
+            try {Function(p.image.toString())}
+            catch (ParseException e) {printError("Missing function body", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing function body", lineNumber);}
         )
         {
             // adds all the function names that have been defined
@@ -476,11 +502,21 @@ void Start():
             }
             definedFuncs.add(currentFunc);
         }
-        try {<SPACE>} catch (ParseException e) {printError("Missing single space after '}'", lineNumber);}
-        try {<SEMICOLON>} catch (ParseException e) {printError("Missing ';' after right brace", lineNumber);}
-        try {<EOL>} catch (ParseException e) {printError("Missing EOL after ';'", lineNumber-1);}
+        try {<SPACE>}
+        catch (ParseException e) {printError("Missing single space after '}'", lineNumber);}
+        catch (TokenMgrError e) {printError("Missing single space after '}'", lineNumber);}
+
+        try {<SEMICOLON>}
+        catch (ParseException e) {printError("Missing ';' after right brace", lineNumber);}
+        catch (TokenMgrError e) {printError("Missing ';' after right brace", lineNumber);}
+
+        try {<EOL>}
+        catch (ParseException e) {printError("Missing EOL after ';'", lineNumber-1);}
+        catch (TokenMgrError e) {printError("Missing EOL after ';'", lineNumber-1);}
     )+
-    try {<EOF>} catch (ParseException e) {printError("Missing EOF after last function declaration", lineNumber);}
+    try {<EOF>}
+    catch (ParseException e) {printError("Missing EOF after last function declaration", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing EOF after last function declaration", lineNumber);}
 
     {
         if (!definedFuncs.contains("MAIN")) {
@@ -504,11 +540,26 @@ void Start():
 void Function(String p):
 {}
 {
-    try {<LBRACE>} catch (ParseException e) {printError("Missing '{' after space", lineNumber);}
-    try {<SPACE>} catch (ParseException e) {printError("Missing single space after '{'", lineNumber);}
-    try {Body(p)} catch (ParseException e) {printError("MAIN method undefined", lineNumber);}
-    try {<SPACE>} catch (ParseException e) {printError("Missing single space after MAIN body expression", lineNumber);}
-    try {<RBRACE>} catch (ParseException e) {printError("Missing '}' after space", lineNumber);}
+    try {<LBRACE>}
+    catch (ParseException e) {printError("Missing '{' after space", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing '{' after space", lineNumber);}
+
+    try {<SPACE>}
+    catch (ParseException e) {printError("Missing single space after '{'", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing single space after '{'", lineNumber);}
+
+    try {Body(p)}
+    catch (ParseException e) {printError("MAIN method undefined", lineNumber);}
+    catch (TokenMgrError e) {printError("MAIN method undefined", lineNumber);}
+
+    try {<SPACE>}
+    catch (ParseException e) {printError("Missing single space after MAIN body expression", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing single space after MAIN body expression", lineNumber);}
+
+    try {<RBRACE>}
+    catch (ParseException e) {printError("Missing '}' after space", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing '}' after space", lineNumber);}
+
     {
         lineNumber++;
     }
@@ -523,7 +574,8 @@ void Body(String p):
 }
 {
     try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p) | t1 = <MAIN>)}
-    catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+    catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+    catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
     {
         if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -547,18 +599,24 @@ void Body(String p):
     (
         (
             // ADDITION expressions
-            try {<PLUS>} catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            try {<PLUS>}
+            catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing '+' operator in expression", lineNumber);}
             {functions.get(currentFunc).add("+");}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
         |
             // MULTIPLICATION expressions
-            try {<TIMES>} catch (ParseException e) {printError("Missing '*' operator in expression", lineNumber);}
+            try {<TIMES>}
+            catch (ParseException e) {printError("Missing '*' operator in expression", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing '*' operator in expression", lineNumber);}
             {functions.get(currentFunc).add("*");}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
         )
 
         // Conditional checks for legality of the parameter values
@@ -593,13 +651,21 @@ String Function_Call(String p):
     Token f = null;
 }
 {
-    try {f = <FUNC_NAME>} catch (ParseException e) {printError("Missing function name in function call", lineNumber);}
+    try {f = <FUNC_NAME>}
+    catch (ParseException e) {printError("Missing function name in function call", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing function name in function call", lineNumber);}
 
-    try {<LEFT_PARENTHESIS>} catch (ParseException e) {printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);}
+    try {<LEFT_PARENTHESIS>}
+    catch (ParseException e) {printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);}
 
-    try {body = Call_Body(p)} catch (ParseException e) {printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);}
+    try {body = Call_Body(p)}
+    catch (ParseException e) {printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);}
+    catch (TokenMgrError e) {printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);}
 
-    try {<RIGHT_PARENTHESIS>} catch (ParseException e) {printError("Missing ')' after function body", lineNumber);}
+    try {<RIGHT_PARENTHESIS>}
+    catch (ParseException e) {printError("Missing ')' after function body", lineNumber);}
+    catch (TokenMgrError e) {printError("Missing ')' after function body", lineNumber);}
 
 
     {
@@ -626,7 +692,8 @@ String Call_Body(String p):
 }
 {
     try {(t1 = <PARAMETER> | t1 = <NUMBER> | call = Function_Call(p)) | t1 = <MAIN>}
-    catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+    catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+    catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
     {
         if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -652,18 +719,24 @@ String Call_Body(String p):
     (
         (
             //ADDITION expression
-            try {<PLUS>} catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            try {<PLUS>}
+            catch (ParseException e) {printError("Missing '+' operator in expression", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing '+' operator in expression", lineNumber);}
             {body += "+";}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
         |
             //MULTIPLICATION expression
-            try {<TIMES>} catch (ParseException e) {printError("Missing operator '*' from expression", lineNumber);}
+            try {<TIMES>}
+            catch (ParseException e) {printError("Missing operator '*' from expression", lineNumber);}
+            catch (TokenMgrError e) {printError("Missing operator '*' from expression", lineNumber);}
             {body += "*";}
 
             try {(t2 = <PARAMETER> | t2 = <NUMBER> | call = Function_Call(p) | t2 = <MAIN>)}
-            catch (ParseException e) {printError("Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (ParseException e) {printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);}
+            catch (TokenMgrError e) {printError("Invalid syntax in function body: " + currentFunc, lineNumber);}
         )
         {
             if (t2 != null && t2.kind == MAIN) {

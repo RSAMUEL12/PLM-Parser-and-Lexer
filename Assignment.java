@@ -4,7 +4,9 @@ import java.util.*;
 
 public class Assignment implements AssignmentConstants {
 
+    // ArrayList to keep track of all defined functions
     ArrayList<String> definedFuncs = new ArrayList<String>();
+    // Hashmap that keeps track of all called functions and the line number they are called from
     HashMap<String, Integer> calledFuncs = new HashMap<String, Integer>();
 
     // Hashmap will store the function names alongside sections of the function bodies
@@ -16,9 +18,9 @@ public class Assignment implements AssignmentConstants {
 
     // keeps track of the function that is being parsed
     String currentFunc = "";
+    // counter to keep track of line number
     int lineNumber = 1;
-    boolean isMain = false;
-    boolean inCall = false;
+    // boolean value to indicate divergence (when circular dependencies between functions occur)
     boolean divergence = false;
 
     public static void main(String args []) throws ParseException, TokenMgrError {
@@ -32,6 +34,7 @@ public class Assignment implements AssignmentConstants {
             System.err.println(e.getMessage());
             System.exit(0);
         }
+        // function will perform checks for divergence before continuing to find an output value
         checkDivergence(parser);
         evaluateProgram(parser);
     }
@@ -44,10 +47,13 @@ public class Assignment implements AssignmentConstants {
         System.exit(0);
     }
 
+    // Evaluation method to retrieve all necessary values
     public static void evaluateProgram(Assignment parser) {
+        // Breaks down the MAIN method into the basic arithmetic expressions - function calls are reduced to their expressions
         String mainExpression = decomposeFunction(parser, "MAIN", "");
-        // returns a stack of operations in a postfix order
+        // Converts the expression from decomposeFunction into Postfix for evaluating the correct value
         Queue<String> exp = infixToPostfix(mainExpression);
+        // The final result
         int result = evaluatePostfix(exp);
         System.out.println(result);
 
@@ -388,10 +394,14 @@ public class Assignment implements AssignmentConstants {
         jj_consume_token(DEF);
       } catch (ParseException e) {
 printError("Missing keyword DEF at the start of newline", lineNumber);
+      } catch (TokenMgrError e) {
+printError("Invalid syntax for DEF keyword", lineNumber);
       }
       try {
         jj_consume_token(SPACE);
       } catch (ParseException e) {
+printError("Missing single space after DEF", lineNumber);
+      } catch (TokenMgrError e) {
 printError("Missing single space after DEF", lineNumber);
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -399,6 +409,8 @@ printError("Missing single space after DEF", lineNumber);
         try {
           jj_consume_token(MAIN);
         } catch (ParseException e) {
+printError("Missing MAIN keyword", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Missing MAIN keyword", lineNumber);
         }
 p = null;
@@ -408,6 +420,8 @@ p = null;
         try {
           jj_consume_token(SPACE);
         } catch (ParseException e) {
+printError("Missing single space after MAIN keyword", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Missing single space after MAIN keyword", lineNumber);
         }
         try {
@@ -422,6 +436,8 @@ if (p != null) {
           Function(null);
         } catch (ParseException e) {
 printError("MAIN function body missing", lineNumber);
+        } catch (TokenMgrError e) {
+printError("MAIN function body missing", lineNumber);
         }
         break;
         }
@@ -429,6 +445,8 @@ printError("MAIN function body missing", lineNumber);
         try {
           f = jj_consume_token(FUNC_NAME);
         } catch (ParseException e) {
+printError("Function name missing after space", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Function name missing after space", lineNumber);
         }
 currentFunc = f.image.toString();
@@ -438,34 +456,42 @@ currentFunc = f.image.toString();
           jj_consume_token(SPACE);
         } catch (ParseException e) {
 printError("Missing single space after '" + f.image.toString() + "'", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Missing single space after '" + f.image.toString() + "'", lineNumber);
         }
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case PARAMETER:{
-          try {
+        try {
+          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
+          case PARAMETER:{
             p = jj_consume_token(PARAMETER);
-          } catch (ParseException e) {
-printError("Missing parameter after space", lineNumber);
-          }
-          break;
-          }
-        case FUNC_NAME:{
-          p = jj_consume_token(FUNC_NAME);
+            break;
+            }
+          case FUNC_NAME:{
+            p = jj_consume_token(FUNC_NAME);
 printError("Invalid parameter name '" + p.image.toString() + "'", lineNumber);
-          break;
+            break;
+            }
+          default:
+            jj_la1[0] = jj_gen;
+            jj_consume_token(-1);
+            throw new ParseException();
           }
-        default:
-          jj_la1[0] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
+        } catch (ParseException e) {
+printError("Missing parameter after function '" + currentFunc + "'", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Invalid syntax for parameter name after '" + currentFunc + "'", lineNumber);
         }
         try {
           jj_consume_token(SPACE);
         } catch (ParseException e) {
 printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Missing space after parameter '" + p.image.toString() + "'", lineNumber);
         }
         try {
           Function(p.image.toString());
         } catch (ParseException e) {
+printError("Missing function body", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Missing function body", lineNumber);
         }
         break;
@@ -484,15 +510,21 @@ printError("Missing function body", lineNumber);
         jj_consume_token(SPACE);
       } catch (ParseException e) {
 printError("Missing single space after '}'", lineNumber);
+      } catch (TokenMgrError e) {
+printError("Missing single space after '}'", lineNumber);
       }
       try {
         jj_consume_token(SEMICOLON);
       } catch (ParseException e) {
 printError("Missing ';' after right brace", lineNumber);
+      } catch (TokenMgrError e) {
+printError("Missing ';' after right brace", lineNumber);
       }
       try {
         jj_consume_token(EOL);
       } catch (ParseException e) {
+printError("Missing EOL after ';'", lineNumber-1);
+      } catch (TokenMgrError e) {
 printError("Missing EOL after ';'", lineNumber-1);
       }
       switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
@@ -508,6 +540,8 @@ printError("Missing EOL after ';'", lineNumber-1);
     try {
       jj_consume_token(0);
     } catch (ParseException e) {
+printError("Missing EOF after last function declaration", lineNumber);
+    } catch (TokenMgrError e) {
 printError("Missing EOF after last function declaration", lineNumber);
     }
 if (!definedFuncs.contains("MAIN")) {
@@ -532,25 +566,35 @@ if (!definedFuncs.contains("MAIN")) {
       jj_consume_token(LBRACE);
     } catch (ParseException e) {
 printError("Missing '{' after space", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Missing '{' after space", lineNumber);
     }
     try {
       jj_consume_token(SPACE);
     } catch (ParseException e) {
+printError("Missing single space after '{'", lineNumber);
+    } catch (TokenMgrError e) {
 printError("Missing single space after '{'", lineNumber);
     }
     try {
       Body(p);
     } catch (ParseException e) {
 printError("MAIN method undefined", lineNumber);
+    } catch (TokenMgrError e) {
+printError("MAIN method undefined", lineNumber);
     }
     try {
       jj_consume_token(SPACE);
     } catch (ParseException e) {
 printError("Missing single space after MAIN body expression", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Missing single space after MAIN body expression", lineNumber);
     }
     try {
       jj_consume_token(RBRACE);
     } catch (ParseException e) {
+printError("Missing '}' after space", lineNumber);
+    } catch (TokenMgrError e) {
 printError("Missing '}' after space", lineNumber);
     }
 lineNumber++;
@@ -584,7 +628,9 @@ lineNumber++;
         throw new ParseException();
       }
     } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
     }
 if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -621,6 +667,8 @@ if (t1 != null && t1.kind == MAIN) {
           jj_consume_token(PLUS);
         } catch (ParseException e) {
 printError("Missing '+' operator in expression", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Missing '+' operator in expression", lineNumber);
         }
 functions.get(currentFunc).add("+");
         try {
@@ -647,7 +695,9 @@ functions.get(currentFunc).add("+");
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
         }
         break;
         }
@@ -655,6 +705,8 @@ printError("Expecting a parameter, positive integer, or function call in body", 
         try {
           jj_consume_token(TIMES);
         } catch (ParseException e) {
+printError("Missing '*' operator in expression", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Missing '*' operator in expression", lineNumber);
         }
 functions.get(currentFunc).add("*");
@@ -682,7 +734,9 @@ functions.get(currentFunc).add("*");
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
         }
         break;
         }
@@ -720,20 +774,28 @@ if (t2 != null && t2.kind == MAIN) {
       f = jj_consume_token(FUNC_NAME);
     } catch (ParseException e) {
 printError("Missing function name in function call", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Missing function name in function call", lineNumber);
     }
     try {
       jj_consume_token(LEFT_PARENTHESIS);
     } catch (ParseException e) {
+printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);
+    } catch (TokenMgrError e) {
 printError("Missing '(' after function call '" + f.image.toString() + "'", lineNumber);
     }
     try {
       body = Call_Body(p);
     } catch (ParseException e) {
 printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Function call '" + f.image.toString() + "' has an empty body", lineNumber);
     }
     try {
       jj_consume_token(RIGHT_PARENTHESIS);
     } catch (ParseException e) {
+printError("Missing ')' after function body", lineNumber);
+    } catch (TokenMgrError e) {
 printError("Missing ')' after function body", lineNumber);
     }
 String name = f.image.toString();
@@ -789,7 +851,9 @@ String name = f.image.toString();
         throw new ParseException();
       }
     } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+    } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
     }
 if (t1 != null && t1.kind == MAIN) {
             printError("MAIN function cannot be called", lineNumber);
@@ -828,6 +892,8 @@ if (t1 != null && t1.kind == MAIN) {
           jj_consume_token(PLUS);
         } catch (ParseException e) {
 printError("Missing '+' operator in expression", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Missing '+' operator in expression", lineNumber);
         }
 body += "+";
         try {
@@ -854,7 +920,9 @@ body += "+";
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
         }
         break;
         }
@@ -862,6 +930,8 @@ printError("Expecting a parameter, positive integer, or function call in body", 
         try {
           jj_consume_token(TIMES);
         } catch (ParseException e) {
+printError("Missing operator '*' from expression", lineNumber);
+        } catch (TokenMgrError e) {
 printError("Missing operator '*' from expression", lineNumber);
         }
 body += "*";
@@ -889,7 +959,9 @@ body += "*";
             throw new ParseException();
           }
         } catch (ParseException e) {
-printError("Expecting a parameter, positive integer, or function call in body", lineNumber);
+printError("Unexpected token(s). Expecting a parameter, positive integer, or function call in body", lineNumber);
+        } catch (TokenMgrError e) {
+printError("Invalid syntax in function body: " + currentFunc, lineNumber);
         }
         break;
         }
@@ -1062,7 +1134,7 @@ if (t2 != null && t2.kind == MAIN) {
   /** Generate ParseException. */
   public ParseException generateParseException() {
 	 jj_expentries.clear();
-	 boolean[] la1tokens = new boolean[18];
+	 boolean[] la1tokens = new boolean[16];
 	 if (jj_kind >= 0) {
 	   la1tokens[jj_kind] = true;
 	   jj_kind = -1;
@@ -1076,7 +1148,7 @@ if (t2 != null && t2.kind == MAIN) {
 		 }
 	   }
 	 }
-	 for (int i = 0; i < 18; i++) {
+	 for (int i = 0; i < 16; i++) {
 	   if (la1tokens[i]) {
 		 jj_expentry = new int[1];
 		 jj_expentry[0] = i;
