@@ -123,6 +123,7 @@ public class Assignment{
     public static String processFunctionBody(String function) {
         String body = "";
          int parenthesisCount = 0;
+         // collects all characters between "(...)"
          for (int i = 0; i < function.length(); i++) {
              if (Character.toString(function.charAt(i)).equals("(")) {
                  parenthesisCount++;
@@ -141,12 +142,10 @@ public class Assignment{
     public static String decomposeFunction(Assignment parser, String funcName, String args) {
         ArrayList<String> functionDefinition = parser.functions.get(funcName);
         String newFunction = ""; //stores decomposition as String
-        boolean decomposed = false;
-        boolean callPresent = false; // tells the function there is a function call that needs to be decomposed
 
         for (String s : functionDefinition) {
+            // adds the numerical value into the string expression
             if (isNumeric(s)) {
-                //System.out.println("Number");
                 newFunction += s;
             }
 
@@ -166,25 +165,24 @@ public class Assignment{
 
             }
 
+            // adds operator token to the string expression
             else if (isOperator(s)) {
-                //System.out.println("Operator");
                 newFunction += s;
             }
 
             else if (isFunction(s)) {
-                //System.out.println("Function");
                 String funcCall = processFunctionName(s);
                 String funcParams = processFunctionBody(s);
 
-                // need to check if the function body contains the parameter so that it can swap it for the actual value in "args"
+                // needs to check if the function body contains the parameter so that it can swap it for the actual value in "args"
                 String funcParameter = findParameter(funcParams);
                 if (funcParameter != null) {
                     funcParams = funcParams.replace(funcParameter, args);
                 }
                 // decompose this function call further using recursion
                 String decomposedCall = decomposeFunction(parser, funcCall, funcParams);
+                // adds the decomposition of the function call into the expression
                 newFunction += "(" + decomposedCall + ")";
-                callPresent = true;
             }
 
         }
@@ -248,22 +246,21 @@ public class Assignment{
             else {return null;}
         }
 
-    // A utility function to return precedence of a given operator
-    // Higher returned value means higher precedence
+    // Function that defines the precedence of operators
     public static int Prec(char ch)
     {
         switch (ch)
         {
-        case '+':
-        case '-':
-            return 1;
+            case '+':
+            case '-':
+                return 1;
 
-        case '*':
-        case '/':
-            return 2;
+            case '*':
+            case '/':
+                return 2;
 
-        case '^':
-            return 3;
+            case '^':
+                return 3;
         }
         return -1;
     }
@@ -272,11 +269,11 @@ public class Assignment{
     // to postfix expression.
     public static Queue<String> infixToPostfix(String exp)
     {
-        // initializing empty String for result
         String result = new String("");
+        // Queue will store the final results
         Queue<String> postfix = new LinkedList<String>();
 
-        // initializing empty stack
+        // Stores values when parentheses are encountered
         Stack<String> stack = new Stack<String>();
 
         for (int i = 0; i<exp.length(); ++i)
